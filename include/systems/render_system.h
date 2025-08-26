@@ -25,11 +25,13 @@ private:
     AssetID m_environment;
 
     bool m_hitbox_render_enabled = false;
+    // Hitbox buffers
     unsigned int m_h_vao = 0;
     unsigned int m_h_vbo = 0;
     unsigned int m_h_ebo = 0;
 
     bool m_debug_render_enabled = false;
+    // Arrow buffers
     unsigned int m_a_vao = 0;
     unsigned int m_a_vbo = 0;
 

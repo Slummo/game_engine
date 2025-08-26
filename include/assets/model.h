@@ -26,7 +26,9 @@ public:
     static const char* base_path() {
         return "assets/models/";
     }
-    const std::string& directory();
+
+    const std::string& name() const;
+    const std::string& directory() const;
 
     void add_mesh(AssetID mesh_id);
     const std::vector<AssetID>& meshes() const;
@@ -35,7 +37,7 @@ protected:
     std::ostream& print(std::ostream& os) const override;
 
 private:
-    std::string m_name;
     std::string m_directory;
+    std::string m_name;
     std::vector<AssetID> m_meshes;
 };

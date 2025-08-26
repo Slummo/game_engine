@@ -6,3 +6,4 @@
 #include "systems/rotation_system.h"
 #include "systems/render_system.h"
 #include "systems/light_system.h"
+#include "systems/camera_system.h"

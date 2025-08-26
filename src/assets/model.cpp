@@ -104,8 +104,12 @@ std::optional<std::shared_ptr<Model>> Model::load_from_file(const std::string& p
     return model;
 }
 
-const std::string& Model::directory() {
+const std::string& Model::directory() const {
     return m_directory;
+}
+
+const std::string& Model::name() const {
+    return m_name;
 }
 
 void Model::add_mesh(AssetID mesh_id) {

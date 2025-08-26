@@ -33,7 +33,7 @@ Mesh::Mesh(std::string name, VertexFormat format, const void* vertices, size_t v
       m_vertices_num(vertices_count),
       m_indices_num(indices_count),
       m_material_id(material_id) {
-    compute_aabb(vertices);
+    compute_local_aabb(vertices);
     upload_to_GPU(vertices, indices);
 }
 
@@ -193,8 +193,8 @@ AssetID Mesh::material_id() const {
     return m_material_id;
 }
 
-const AABB& Mesh::aabb() const {
-    return m_aabb;
+const AABB& Mesh::local_aabb() const {
+    return m_local_aabb;
 }
 
 std::ostream& Mesh::print(std::ostream& os) const {
@@ -203,9 +203,9 @@ std::ostream& Mesh::print(std::ostream& os) const {
               << "): " << AssetManager::instance().asset_to_string(m_material_id) << ")";
 }
 
-void Mesh::compute_aabb(const void* vertices) {
+void Mesh::compute_local_aabb(const void* vertices) {
     if (m_vertices_num == 0 || !vertices) {
-        m_aabb = {glm::vec3(0.0f), glm::vec3(0.0f)};
+        m_local_aabb = {glm::vec3(0.0f), glm::vec3(0.0f)};
         return;
     }
 
@@ -235,7 +235,7 @@ void Mesh::compute_aabb(const void* vertices) {
         }
     }
 
-    m_aabb = {min, max};
+    m_local_aabb = {min, max};
 }
 
 void Mesh::upload_to_GPU(const void* vertices, const void* indices) {

@@ -76,7 +76,7 @@ public:
 
     int32_t index_count() const;
     AssetID material_id() const;
-    const AABB& aabb() const;
+    const AABB& local_aabb() const;
 
 protected:
     std::ostream& print(std::ostream& os) const override;
@@ -88,12 +88,12 @@ private:
     uint32_t m_indices_num;
     AssetID m_material_id;
 
-    AABB m_aabb;
+    AABB m_local_aabb;
 
     uint32_t m_vao = 0;
     uint32_t m_vbo = 0;
     uint32_t m_ebo = 0;
 
-    void compute_aabb(const void* vertices);
+    void compute_local_aabb(const void* vertices);
     void upload_to_GPU(const void* vertices, const void* indices);
 };

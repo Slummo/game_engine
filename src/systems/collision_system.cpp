@@ -9,10 +9,10 @@
 
 void CollisionSystem::init(ECS& ecs) {
     for (auto [e, col, m] : ecs.entities_with<ColliderComponent, ModelComponent>()) {
-        // Update colliders with model's aabb
-        const AABB& model_aabb = m.model_aabb;
-        col.size = model_aabb.max - model_aabb.min;
-        col.offset = (model_aabb.min + model_aabb.max) * 0.5f;
+        // Update colliders with model's local aabb
+        const AABB& local_aabb = m.local_aabb;
+        col.size = local_aabb.max - local_aabb.min;
+        col.offset = (local_aabb.min + local_aabb.max) * 0.5f;
     }
 }
 
@@ -71,54 +71,64 @@ void CollisionSystem::update(ECS& ecs, float /*dt*/) {
     resolve_contacts(ecs, std::move(contacts));
 }
 
-CollisionSystem::OBB CollisionSystem::compute_obb(const TransformComponent& tr, const ColliderComponent& c) {
-    glm::vec3 pos = tr.position();
-    glm::quat rot = tr.rotation();
-    glm::vec3 sc = tr.scale();
+CollisionSystem::OBB CollisionSystem::compute_world_OBB(TransformComponent& tr, ColliderComponent& c) {
+    const glm::mat4& M = tr.model_matrix();
 
-    glm::vec3 center = pos + rot * (c.offset * sc);
+    glm::vec4 local_center(c.offset, 1.0f);
+    glm::vec3 center(M * local_center);
 
-    glm::vec3 half_extens = (c.size * 0.5f) * sc;
+    glm::vec3 x(M[0]);
+    glm::vec3 y(M[1]);
+    glm::vec3 z(M[2]);
 
-    // axes: rotation applied to basis
+    glm::vec3 half_extents_local = c.size * 0.5f;
+
     OBB obb;
     obb.center = center;
-    obb.axes[0] = glm::normalize(rot * glm::vec3(1.0f, 0.0f, 0.0f));
-    obb.axes[1] = glm::normalize(rot * glm::vec3(0.0f, 1.0f, 0.0f));
-    obb.axes[2] = glm::normalize(rot * glm::vec3(0.0f, 0.0f, 1.0f));
-    obb.half_extents = glm::abs(half_extens);
+    obb.axes[0] = glm::normalize(x);
+    obb.axes[1] = glm::normalize(y);
+    obb.axes[2] = glm::normalize(z);
+
+    obb.half_extents.x = glm::length(x) * half_extents_local.x;
+    obb.half_extents.y = glm::length(y) * half_extents_local.y;
+    obb.half_extents.z = glm::length(z) * half_extents_local.z;
+
     return obb;
 }
 
-CollisionSystem::Sphere CollisionSystem::compute_sphere(const TransformComponent& tr, const ColliderComponent& c) {
-    glm::vec3 pos = tr.position();
-    glm::quat rot = tr.rotation();
-    glm::vec3 scale = tr.scale();
-    glm::vec3 center = pos + rot * (c.offset * scale);
+CollisionSystem::Sphere CollisionSystem::compute_world_sphere(TransformComponent& tr, ColliderComponent& c) {
+    const glm::mat4& M = tr.model_matrix();
 
-    float max_scale = glm::max(scale.x, glm::max(scale.y, scale.z));
+    glm::vec4 local_center(c.offset, 1.0f);
+    glm::vec3 center(M * local_center);
+
+    float sx = glm::length(glm::vec3(M[0]));
+    float sy = glm::length(glm::vec3(M[1]));
+    float sz = glm::length(glm::vec3(M[2]));
+    float max_scale = glm::max(sx, glm::max(sy, sz));
+
     float radius = c.size.x * max_scale;
 
     return {center, radius};
 }
 
-CollisionSystem::Capsule CollisionSystem::compute_capsule(const TransformComponent& tr, const ColliderComponent& c) {
-    Capsule cap;
+CollisionSystem::Capsule CollisionSystem::compute_world_capsule(TransformComponent& tr, ColliderComponent& c) {
+    const glm::mat4& M = tr.model_matrix();
 
-    glm::vec3 world_offset = tr.rotation() * c.offset;
-    glm::vec3 up = tr.rotation() * glm::vec3(0, 1, 0);
+    glm::vec4 local_center(c.offset, 1.0f);
+    glm::vec3 center(M * local_center);
 
-    float radius = c.size.x * 0.5f;
-    float half_height = c.size.y * 0.5f;
+    glm::vec3 up = glm::normalize(glm::vec3(M[1]));  // Y axis in world space
+    float sx = glm::length(glm::vec3(M[0]));
+    float sy = glm::length(glm::vec3(M[1]));
 
-    cap.p0 = tr.position() + world_offset - up * half_height;
-    cap.p1 = tr.position() + world_offset + up * half_height;
-    cap.radius = radius;
+    float hh = (c.size.y * 0.5f) * sy;  // half height
+    float radius = c.size.x * sx;
 
-    return cap;
+    return {center - up * hh, center + up * hh, radius};
 }
 
-AABB CollisionSystem::compute_aabb_from_obb(const OBB& obb) {
+AABB CollisionSystem::compute_world_aabb_from_obb(const OBB& obb) {
     glm::vec3 e0 = glm::abs(obb.axes[0]) * obb.half_extents.x;
     glm::vec3 e1 = glm::abs(obb.axes[1]) * obb.half_extents.y;
     glm::vec3 e2 = glm::abs(obb.axes[2]) * obb.half_extents.z;
@@ -128,7 +138,7 @@ AABB CollisionSystem::compute_aabb_from_obb(const OBB& obb) {
     return AABB{.min = obb.center - extents, .max = obb.center + extents};
 }
 
-AABB CollisionSystem::compute_aabb_from_sphere(const Sphere& s) {
+AABB CollisionSystem::compute_world_aabb_from_sphere(const Sphere& s) {
     glm::vec3 radius_vec(s.radius);
     return AABB{.min = s.center - radius_vec, .max = s.center + radius_vec};
 }

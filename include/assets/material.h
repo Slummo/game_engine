@@ -40,6 +40,8 @@ public:
 
     void set_uniforms();
 
+    const std::string& name() const;
+
     bool get_texture(TextureType type, AssetID& out) const;
 
     template <typename T>

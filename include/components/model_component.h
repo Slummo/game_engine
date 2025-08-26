@@ -5,25 +5,28 @@
 #include "managers/asset_manager.h"
 
 #include <glm/glm.hpp>
+#include <limits>
 
 struct ModelComponent : public IComponent {
-    ModelComponent(AssetID model_id = 0) : model_id(model_id) {
+    ModelComponent(AssetID model_id = 0) : asset_id(model_id) {
         AssetManager& am = AssetManager::instance();
         auto& mesh_ids = am.get_asset<Model>(model_id).meshes();
 
-        // Compute model's AABB
-        glm::vec3 min(FLT_MAX);
-        glm::vec3 max(-FLT_MAX);
+        // Compute model's local AABB
+        glm::vec3 min(std::numeric_limits<float>::max());
+        glm::vec3 max(-std::numeric_limits<float>::max());
         for (AssetID mesh_id : mesh_ids) {
             Mesh& mesh = am.get_asset<Mesh>(mesh_id);
-            min = glm::min(min, mesh.aabb().min);
-            max = glm::max(max, mesh.aabb().max);
+            const AABB& local_aabb = mesh.local_aabb();
+            min = glm::min(min, local_aabb.min);
+            max = glm::max(max, local_aabb.max);
         }
-        model_aabb = {min, max};
+        local_aabb = {min, max};
     }
 
-    AssetID model_id = 0;
-    AABB model_aabb;
+    AssetID asset_id = 0;
+    AABB local_aabb;
+    bool visible = false;
     int material_override_index = -1;  // optional per-submesh override
     bool casts_shadows = true;
     int layer = 0;  // rendering layer / culling mask

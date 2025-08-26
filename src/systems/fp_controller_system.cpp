@@ -109,7 +109,5 @@ void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
 
         // Set camera height to 40% over the player's center
         cam.set_position(tr.position() + glm::vec3(0.0f, tr.scale().y * 0.4f, 0.0f));
-        cam.compute_view_matrix();
-        cam.compute_proj_matrix();
     }
 }

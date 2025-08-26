@@ -4,7 +4,9 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_access.hpp>
 #include <cstdint>
+#include <array>
 
 enum class ProjectionType { Perspective, Orthographic };
 
@@ -30,31 +32,39 @@ struct CameraComponent : public IComponent {
         m_up = glm::normalize(glm::cross(m_right, m_front));
     }
 
-    void compute_view_matrix() {
-        if (!m_dirty.view_dirty) {
-            return;
+    bool is_sphere_visible(const glm::vec3& center, float radius) {
+        compute_frustum();
+
+        for (int i = 0; i < 6; i++) {
+            float distance = glm::dot(glm::vec3(m_frustum.planes[i]), center) + m_frustum.planes[i].w;
+            if (distance < -radius) {
+                return false;
+            }
         }
-
-        m_dirty.view_dirty = false;
-
-        m_view_matrix = glm::lookAt(m_position, m_position + m_front, m_up);
+        return true;
     }
 
-    void compute_proj_matrix() {
-        if (!m_dirty.proj_dirty) {
-            return;
+    bool is_AABB_visible(const glm::vec3& min, const glm::vec3& max) {
+        compute_frustum();
+
+        for (int i = 0; i < 6; i++) {
+            glm::vec3 positive = min;
+            if (m_frustum.planes[i].x >= 0) {
+                positive.x = max.x;
+            }
+            if (m_frustum.planes[i].y >= 0) {
+                positive.y = max.y;
+            }
+            if (m_frustum.planes[i].z >= 0) {
+                positive.z = max.z;
+            }
+
+            if (glm::dot(glm::vec3(m_frustum.planes[i]), positive) + m_frustum.planes[i].w < 0) {
+                return false;
+            }
         }
 
-        m_dirty.proj_dirty = false;
-
-        if (m_proj_type == ProjectionType::Perspective) {
-            m_proj_matrix = glm::perspective(m_fov_y, m_aspect, m_near_clip, m_far_clip);
-        } else {
-            float hh = m_ortho_size * 0.5f;
-            float hw = hh * m_aspect;
-
-            m_proj_matrix = glm::ortho(-hw, hw, -hh, hh, m_ortho_near, m_ortho_far);
-        }
+        return true;
     }
 
     // GETTERS
@@ -76,11 +86,14 @@ struct CameraComponent : public IComponent {
         return m_position;
     }
 
-    const glm::mat4& view_matrix() const {
-        return m_view_matrix;
-    }
-    const glm::mat4& proj_matrix() const {
+    const glm::mat4& proj_matrix() {
+        compute_proj_matrix();
         return m_proj_matrix;
+    }
+
+    const glm::mat4& view_matrix() {
+        compute_view_matrix();
+        return m_view_matrix;
     }
 
     float yaw() const {
@@ -114,7 +127,7 @@ struct CameraComponent : public IComponent {
     ProjectionType proj_type() const {
         return m_proj_type;
     }
-    bool active() const {
+    bool is_active() const {
         return m_active;
     }
     int32_t priority() const {
@@ -260,4 +273,73 @@ private:
     bool m_active = true;
     int32_t m_priority = 0;
     CameraDirty m_dirty;
+
+    struct Frustum {
+        glm::vec4 planes[6];  // store planes as coefficients for the cartesian form
+    };
+    Frustum m_frustum;
+
+    void compute_proj_matrix() {
+        if (!m_dirty.proj_dirty) {
+            return;
+        }
+
+        m_dirty.proj_dirty = false;
+
+        if (m_proj_type == ProjectionType::Perspective) {
+            m_proj_matrix = glm::perspective(m_fov_y, m_aspect, m_near_clip, m_far_clip);
+        } else {
+            float hh = m_ortho_size;
+            float hw = hh * m_aspect;
+
+            m_proj_matrix = glm::ortho(-hw, hw, -hh, hh, m_ortho_near, m_ortho_far);
+        }
+    }
+
+    void compute_view_matrix() {
+        if (!m_dirty.view_dirty && !m_dirty.vectors_dirty) {
+            return;
+        }
+
+        update_vectors();
+
+        m_dirty.view_dirty = false;
+
+        m_view_matrix = glm::lookAt(m_position, m_position + m_front, m_up);
+    }
+
+    void compute_frustum() {
+        if (!m_dirty.proj_dirty && !m_dirty.view_dirty) {
+            return;
+        }
+
+        glm::mat4 view_proj = proj_matrix() * view_matrix();
+
+        glm::vec4 row_x = glm::row(view_proj, 0);
+        glm::vec4 row_y = glm::row(view_proj, 1);
+        glm::vec4 row_z = glm::row(view_proj, 2);
+        glm::vec4 row_w = glm::row(view_proj, 3);
+
+        // Left   = w + x
+        m_frustum.planes[0] = row_w + row_x;
+        // Right  = w - x
+        m_frustum.planes[1] = row_w - row_x;
+        // Bottom = w + y
+        m_frustum.planes[2] = row_w + row_y;
+        // Top    = w - y
+        m_frustum.planes[3] = row_w - row_y;
+        // Near   = w + z
+        m_frustum.planes[4] = row_w + row_z;
+        // Far    = w - z
+        m_frustum.planes[5] = row_w - row_z;
+
+        // Normalize planes
+        for (int i = 0; i < 6; i++) {
+            float length = glm::length(glm::vec3(m_frustum.planes[i]));
+            m_frustum.planes[i] /= length;
+        }
+
+        m_dirty.proj_dirty = false;
+        m_dirty.view_dirty = false;
+    }
 };

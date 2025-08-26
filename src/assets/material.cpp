@@ -74,6 +74,10 @@ void Material::set_uniforms() {
     shader.set_float("mat.shininess", shininess);
 }
 
+const std::string& Material::name() const {
+    return m_name;
+}
+
 bool Material::get_texture(TextureType type, AssetID& out) const {
     auto it = m_textures.find(type);
     if (it == m_textures.end()) {

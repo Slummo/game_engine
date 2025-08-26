@@ -13,19 +13,6 @@ public:
         : m_position(pos), m_rotation(rot), m_scale(scale), m_parent(parent) {
     }
 
-    void compute_model_matrix() {
-        if (!m_dirty) {
-            return;
-        }
-
-        m_dirty = false;
-
-        m_model_matrix = glm::mat4(1.0f);
-        m_model_matrix *= glm::translate(glm::mat4(1.0f), m_position);
-        m_model_matrix *= glm::mat4_cast(m_rotation);
-        m_model_matrix *= glm::scale(glm::mat4(1.0f), m_scale);
-    }
-
     // GETTERS
 
     const glm::vec3& position() const {
@@ -37,7 +24,8 @@ public:
     const glm::vec3& scale() const {
         return m_scale;
     }
-    const glm::mat4& model_matrix() const {
+    const glm::mat4& model_matrix() {
+        compute_model_matrix();
         return m_model_matrix;
     }
     EntityID parent() const {
@@ -87,4 +75,17 @@ private:
 
     bool m_dirty = true;
     EntityID m_parent = 0;
+
+    void compute_model_matrix() {
+        if (!m_dirty) {
+            return;
+        }
+
+        m_dirty = false;
+
+        m_model_matrix = glm::mat4(1.0f);
+        m_model_matrix *= glm::translate(glm::mat4(1.0f), m_position);
+        m_model_matrix *= glm::mat4_cast(m_rotation);
+        m_model_matrix *= glm::scale(glm::mat4(1.0f), m_scale);
+    }
 };

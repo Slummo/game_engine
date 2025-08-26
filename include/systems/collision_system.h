@@ -44,11 +44,11 @@ private:
             is_sphere = collider_comp.type == HitboxType::Sphere;
 
             if (is_sphere) {
-                sphere = compute_sphere(transform_comp, collider_comp);
-                collider_aabb = compute_aabb_from_sphere(sphere);
+                sphere = compute_world_sphere(transform_comp, collider_comp);
+                collider_aabb = compute_world_aabb_from_sphere(sphere);
             } else {
-                obb = compute_obb(transform_comp, collider_comp);
-                collider_aabb = compute_aabb_from_obb(obb);
+                obb = compute_world_OBB(transform_comp, collider_comp);
+                collider_aabb = compute_world_aabb_from_obb(obb);
             }
         }
 
@@ -62,11 +62,11 @@ private:
     };
 
     // Compute world shapes
-    static OBB compute_obb(const TransformComponent& tr, const ColliderComponent& c);
-    static Sphere compute_sphere(const TransformComponent& tr, const ColliderComponent& c);
-    static Capsule compute_capsule(const TransformComponent& tr, const ColliderComponent& c);
-    static AABB compute_aabb_from_obb(const OBB& obb);
-    static AABB compute_aabb_from_sphere(const Sphere& s);
+    static OBB compute_world_OBB(TransformComponent& tr, ColliderComponent& c);
+    static Sphere compute_world_sphere(TransformComponent& tr, ColliderComponent& c);
+    static Capsule compute_world_capsule(TransformComponent& tr, ColliderComponent& c);
+    static AABB compute_world_aabb_from_obb(const OBB& obb);
+    static AABB compute_world_aabb_from_sphere(const Sphere& s);
 
     // Broadphase
     static bool aabb_overlap(const AABB& A, const AABB& B);

@@ -19,6 +19,7 @@ void RenderSystem::update(ECS& ecs, float /*dt*/) {
     glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // Only get the main camera for now
     for (auto [_e, _pl, cam] : ecs.entities_with<PlayerComponent, CameraComponent>()) {
         render_scene(ecs, cam);
         render_hitboxes(ecs, cam);
@@ -51,7 +52,12 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& camera) {
             continue;
         }
 
-        Model& model = am.get_asset<Model>(m.model_id);
+        // From frustum culling
+        if (!m.visible) {
+            continue;
+        }
+
+        Model& model = am.get_asset<Model>(m.asset_id);
 
         for (AssetID mesh_id : model.meshes()) {
             Mesh& mesh = am.get_asset<Mesh>(mesh_id);
@@ -59,7 +65,6 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& camera) {
             const Shader& shader = mat.bound_shader();
 
             // Vertex shader
-            tr.compute_model_matrix();
             const glm::mat4 model_mat = tr.model_matrix();
             glm::mat3 normal_mat = glm::transpose(glm::inverse(glm::mat3(model_mat)));
             shader.set_matrix_4f("Projection", camera.proj_matrix());
@@ -82,7 +87,6 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& camera) {
             Texture::unbind();
         }
     }
-
     // TODO UI, post-processing, debug overlays
 }
 
@@ -138,7 +142,6 @@ void RenderSystem::render_debug(ECS& /*ecs*/, CameraComponent& camera) {
 
     AssetManager& am = AssetManager::instance();
 
-    // Draw directional light arrow
     Shader& shader = am.get_asset<Shader>(m_colored_line_shader_id);
     if (am.last_used_shader() != m_colored_line_shader_id) {
         shader.use();
@@ -150,7 +153,8 @@ void RenderSystem::render_debug(ECS& /*ecs*/, CameraComponent& camera) {
     shader.set_matrix_4f("Model", glm::mat4(1.0f));           // identity, since positions are in world space
     shader.set_vec_3f("color", glm::vec3(1.0f, 1.0f, 0.0f));  // yellow
 
-    glLineWidth(6.0f);
+    // Draw directional light arrow
+    glLineWidth(5.0f);
     glBindVertexArray(m_a_vao);
     glDrawArrays(GL_LINES, 0, 2);
     glLineWidth(1.0f);
@@ -176,7 +180,7 @@ void RenderSystem::toggle_debug_render_enabled() {
 }
 
 void RenderSystem::create_wire_cube() {
-    // 8 verts of unit cube centered at origin (positions)
+    // 8 verts of unit cube centered at origin
     float verts[] = {
         -0.5f, -0.5f, -0.5f,  // 0
         0.5f,  -0.5f, -0.5f,  // 1
@@ -205,8 +209,8 @@ void RenderSystem::create_wire_cube() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_h_ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(inds), inds, GL_STATIC_DRAW);
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);  // position
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
 
     glBindVertexArray(0);
 }
@@ -249,10 +253,10 @@ void RenderSystem::create_arrow(ECS& ecs) {
 
     glBindVertexArray(m_a_vao);
     glBindBuffer(GL_ARRAY_BUFFER, m_a_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(0);  // position
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
 }
 
 void RenderSystem::destroy_arrow() {

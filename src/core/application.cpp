@@ -78,7 +78,8 @@ bool Application::init() {
     // m_ecs.add_component<ModelComponent>(player_id, player_model_id);
     m_ecs.add_component<RigidBodyComponent>(player_id, 60.0f);
     m_ecs.add_component<ColliderComponent>(player_id);
-    m_ecs.add_component<CameraComponent>(player_id);
+    auto& main_camera = m_ecs.add_component<CameraComponent>(player_id);
+    main_camera.set_active(true);
     m_ecs.add_component<PlayerComponent>(player_id, "main_player");
     m_ecs.add_component<FPControllerComponent>(player_id);
 
@@ -107,6 +108,7 @@ bool Application::init() {
     m_sm.add_system<RigidBodySystem>();
     m_sm.add_system<CollisionSystem>();
     m_sm.add_system<LightSystem>();
+    m_sm.add_system<CameraSystem>(main_camera);
     m_sm.add_system<RotationSystem>();
     m_sm.add_system<RenderSystem>();
     m_sm.init_all(m_ecs);

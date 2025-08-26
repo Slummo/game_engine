@@ -1,0 +1,115 @@
+#include "core/window.h"
+#include "core/application.h"
+#include "core/log.h"
+
+#include <iostream>
+
+bool Window::create(Application* app_ptr, int32_t width, int32_t height, const std::string& title) {
+    if (!glfwInit()) {
+        ERR("[Window] Failed to init GLFW");
+        return false;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
+    m_handle = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+    if (!m_handle) {
+        ERR("[Window] Failed to create GLFW window");
+        glfwTerminate();
+        return false;
+    }
+
+    glfwMakeContextCurrent(m_handle);
+    glfwSetWindowUserPointer(m_handle, app_ptr);
+
+    // Set callbacks
+    glfwSetFramebufferSizeCallback(m_handle,
+                                   [](GLFWwindow* /*w*/, int width, int height) { glViewport(0, 0, width, height); });
+
+    glfwSetKeyCallback(m_handle, [](GLFWwindow* w, int key, int scancode, int action, int mods) {
+        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        app->get_input_manager().on_key(key, scancode, action, mods);
+    });
+
+    glfwSetMouseButtonCallback(m_handle, [](GLFWwindow* w, int button, int action, int mods) {
+        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        app->get_input_manager().on_mouse_button(button, action, mods);
+    });
+
+    glfwSetCursorPosCallback(m_handle, [](GLFWwindow* w, double xpos, double ypos) {
+        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        app->get_input_manager().on_cursor_pos(xpos, ypos);
+    });
+
+    glfwSetScrollCallback(m_handle, [](GLFWwindow* w, double xoffset, double yoffset) {
+        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        app->get_input_manager().on_scroll(xoffset, yoffset);
+    });
+
+    glfwSetCharCallback(m_handle, [](GLFWwindow* w, unsigned int codepoint) {
+        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        app->get_input_manager().on_char(codepoint);
+    });
+
+    m_width = width;
+    m_height = height;
+
+    return true;
+}
+
+void Window::show() const {
+    if (m_handle) {
+        glfwShowWindow(m_handle);
+    }
+}
+
+void Window::poll_events() const {
+    glfwPollEvents();
+}
+
+void Window::swap_buffers() const {
+    glfwSwapBuffers(m_handle);
+}
+
+bool Window::should_close() const {
+    return glfwWindowShouldClose(m_handle);
+}
+
+glm::ivec2 Window::get_size() const {
+    return glm::ivec2(m_width, m_height);
+}
+
+void Window::get_framebuffer_size(int32_t* x, int32_t* y) const {
+    glfwGetFramebufferSize(m_handle, x, y);
+}
+
+double Window::get_time() const {
+    return glfwGetTime();
+}
+void Window::set_input_mode(int32_t mode, int32_t value) const {
+    glfwSetInputMode(m_handle, mode, value);
+}
+
+void Window::set_viewport(int32_t x, int32_t y) const {
+    glViewport(0, 0, x, y);
+}
+
+void Window::set_wiremode(bool value) const {
+    glPolygonMode(GL_FRONT_AND_BACK, value ? GL_LINE : GL_FILL);
+}
+
+void Window::close() const {
+    glfwSetWindowShouldClose(m_handle, 1);
+}
+
+void Window::destroy() {
+    if (m_handle) {
+        glfwDestroyWindow(m_handle);
+    }
+
+    glfwTerminate();
+    m_handle = nullptr;
+}

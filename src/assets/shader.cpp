@@ -7,6 +7,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <cstdint>
 
 std::shared_ptr<Shader> Shader::create_fallback() {
     return std::make_shared<Shader>();
@@ -106,7 +107,7 @@ void Shader::set_bool(const std::string& name, bool value) const {
     if (loc == -1) {
         return;
     }
-    glUniform1i(loc, (int)value);
+    glUniform1i(loc, (int32_t)value);
 }
 
 void Shader::set_int(const std::string& name, int32_t value) const {
@@ -197,7 +198,7 @@ void Shader::get_active_uniforms() {
     GLint count;
     glGetProgramiv(m_program_id, GL_ACTIVE_UNIFORMS, &count);
 
-    for (int i = 0; i < count; i++) {
+    for (int32_t i = 0; i < count; i++) {
         char name[128];
         GLsizei length;
         GLint size;

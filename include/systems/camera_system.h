@@ -2,8 +2,6 @@
 
 #include "systems/isystem.h"
 
-#include <glm/glm.hpp>
-
 class CameraSystem : public ISystem {
 public:
     CameraSystem() = delete;

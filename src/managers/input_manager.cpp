@@ -24,8 +24,8 @@ InputManager::InputManager() {
     m_action_pressed_cache.reserve(64);
 }
 
-void InputManager::on_key(int key, int /*scancode*/, int action, int mods) {
-    if (key < 0 || key >= static_cast<int>(MAX_KEYS)) {
+void InputManager::on_key(int32_t key, int32_t /*scancode*/, int32_t action, int32_t mods) {
+    if (key < 0 || key >= static_cast<int32_t>(MAX_KEYS)) {
         return;
     }
 
@@ -44,7 +44,7 @@ void InputManager::on_key(int key, int /*scancode*/, int action, int mods) {
     emit_event(ev);
 }
 
-void InputManager::on_mouse_button(int button, int action, int /*mods*/) {
+void InputManager::on_mouse_button(int32_t button, int32_t action, int32_t /*mods*/) {
     if (button < 0 || button >= 32) {
         return;
     }
@@ -76,7 +76,7 @@ void InputManager::on_scroll(double /*xoffset*/, double yoffset) {
     emit_event(ev);
 }
 
-void InputManager::on_char(unsigned int codepoint) {
+void InputManager::on_char(uint32_t codepoint) {
     // emit a keydown-like character event
     Event ev = {.type = EventType::KeyDown,
                 .timestamp = m_time,
@@ -181,21 +181,21 @@ void InputManager::end_frame() {
 }
 
 bool InputManager::is_key_down(Key k) const {
-    if (k < 0 || k >= static_cast<int>(MAX_KEYS)) {
+    if (k < 0 || k >= static_cast<int32_t>(MAX_KEYS)) {
         return false;
     }
     return m_curr_keys.test(static_cast<size_t>(k));
 }
 
 bool InputManager::was_key_pressed(Key k) const {
-    if (k < 0 || k >= static_cast<int>(MAX_KEYS)) {
+    if (k < 0 || k >= static_cast<int32_t>(MAX_KEYS)) {
         return false;
     }
     return m_curr_keys.test(static_cast<size_t>(k)) && !m_prev_keys.test(static_cast<size_t>(k));
 }
 
 bool InputManager::was_key_released(Key k) const {
-    if (k < 0 || k >= static_cast<int>(MAX_KEYS)) {
+    if (k < 0 || k >= static_cast<int32_t>(MAX_KEYS)) {
         return false;
     }
     return !m_curr_keys.test(static_cast<size_t>(k)) && m_prev_keys.test(static_cast<size_t>(k));
@@ -240,7 +240,7 @@ void InputManager::register_action(const std::string& name, std::vector<Binding>
     register_action(action);
 }
 
-void InputManager::register_action(const std::string& name, InputType type, int key, int mod) {
+void InputManager::register_action(const std::string& name, InputType type, int32_t key, int32_t mod) {
     register_action(name, {Binding(type, key, mod)});
 }
 

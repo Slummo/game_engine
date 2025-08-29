@@ -34,7 +34,7 @@ Mesh::Mesh(std::string name, VertexFormat format, const void* vertices, size_t v
       m_indices_num(indices_count),
       m_material_id(material_id) {
     compute_local_aabb(vertices);
-    upload_to_GPU(vertices, indices);
+    upload(vertices, indices);
 }
 
 std::shared_ptr<Mesh> Mesh::create_fallback() {
@@ -238,7 +238,7 @@ void Mesh::compute_local_aabb(const void* vertices) {
     m_local_aabb = {min, max};
 }
 
-void Mesh::upload_to_GPU(const void* vertices, const void* indices) {
+void Mesh::upload(const void* vertices, const void* indices) {
     if (!vertices || !indices) {
         return;
     }
@@ -294,5 +294,5 @@ void Mesh::upload_to_GPU(const void* vertices, const void* indices) {
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    print_gl_error_if_any("Mesh::upload_to_GPU");
+    print_gl_error_if_any("Mesh::upload");
 }

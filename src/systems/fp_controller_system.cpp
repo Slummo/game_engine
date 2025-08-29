@@ -2,26 +2,24 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-#define EPS 1e-6f
+#define FP_EPS 1e-6f
 #define JMSRF 0.65f  // Jumping movement speed reduction factor
 
 FirstPersonControllerSystem::FirstPersonControllerSystem(InputManager& in_mgr) : m_in_mgr(in_mgr) {
 }
 
 void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
-    for (auto [_e, tr, rb, col, pl, cam, fpc] :
+    for (auto [e, tr, rb, col, pl, cam, fpc] :
          ecs.entities_with<TransformComponent, RigidBodyComponent, ColliderComponent, PlayerComponent, CameraComponent,
                            FPControllerComponent>()) {
         // Mouse look
-
         glm::vec2 mouse_delta = m_in_mgr.mouse_delta();
         cam.update_yaw(mouse_delta.x * fpc.look_speed);     // + for right
         cam.update_pitch(-mouse_delta.y * fpc.look_speed);  // - for down
-        cam.set_pitch(glm::clamp(cam.pitch(), -89.0f, 89.0f));
-        cam.update_vectors();
 
         // Apply yaw only to the transform
         glm::quat q_yaw = glm::angleAxis(glm::radians(cam.yaw()), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -49,9 +47,7 @@ void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
         }
 
         // Normalize to avoid faster diagonal movement
-        if (glm::length(move_dir) > EPS) {
-            move_dir = glm::normalize(move_dir);
-        }
+        move_dir = glm::normalize(move_dir);
 
         // Current horizontal velocity and speed
         glm::vec3 horiz_vel = rb.velocity;
@@ -62,7 +58,7 @@ void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
         float stop_speed_threshold = 0.2f;  // below this, snap to zero
 
         // Movement
-        bool is_moving = glm::dot(move_dir, move_dir) > EPS;
+        bool is_moving = glm::dot(move_dir, move_dir) > FP_EPS;
         if (is_moving) {
             glm::vec3 desired_vel_h = move_dir * fpc.move_speed;
 
@@ -105,9 +101,13 @@ void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
 
             fpc.should_jump = false;  // consumed
             fpc.is_grounded = false;  // now airborne
-        }
 
-        // Set camera height to 40% over the player's center
-        cam.set_position(tr.position() + glm::vec3(0.0f, tr.scale().y * 0.4f, 0.0f));
+            // Sound
+            if (ecs.has_component<SoundSourceComponent>(e)) {
+                auto& ss = ecs.get_component<SoundSourceComponent>(e);
+                ss.set_sound("Jump");
+                ss.play();
+            }
+        }
     }
 }

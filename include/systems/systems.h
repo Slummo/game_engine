@@ -7,3 +7,4 @@
 #include "systems/render_system.h"
 #include "systems/light_system.h"
 #include "systems/camera_system.h"
+#include "systems/sound_system.h"

@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <cstdint>
 
 Application::Application() : m_running(true), m_cursor_enabled(true), m_wiremode(false) {
 }
@@ -20,7 +21,7 @@ bool Application::init() {
         return false;
     }
 
-    int fb_w, fb_h;
+    int32_t fb_w, fb_h;
     m_window.get_framebuffer_size(&fb_w, &fb_h);
     m_window.set_viewport(fb_w, fb_h);
 
@@ -48,6 +49,10 @@ bool Application::init() {
     AssetID backpack_model_id = am.load_asset<Model>("obj/backpack/backpack.obj", "backpack_model");
     AssetID player_model_id = am.load_asset<Model>("obj/player/player.obj", "player_model");
 
+    // Load sounds
+    AssetID jump_sound_id = am.load_asset<Sound>("cartoon_jump.mp3");
+
+    // Create entities
     EntityID cube_id = m_ecs.create_entity();
     EntityID plane_id = m_ecs.create_entity();
     EntityID player_id = m_ecs.create_entity();
@@ -71,18 +76,6 @@ bool Application::init() {
     m_ecs.add_component<RigidBodyComponent>(plane_id, 0.0f, true);
     m_ecs.add_component<ColliderComponent>(plane_id);
 
-    // Player
-    auto& pl_tr = m_ecs.add_component<TransformComponent>(player_id, glm::vec3(0.0f, 0.0f, 4.0f));
-    pl_tr.set_scale(glm::vec3(1.0f, 2.0f, 1.0f));
-    pl_tr.update_position(glm::vec3(0.0f, pl_tr.scale().y * 0.5f, 0.0f));  // feet on ground
-    // m_ecs.add_component<ModelComponent>(player_id, player_model_id);
-    m_ecs.add_component<RigidBodyComponent>(player_id, 60.0f);
-    m_ecs.add_component<ColliderComponent>(player_id);
-    auto& main_camera = m_ecs.add_component<CameraComponent>(player_id);
-    main_camera.set_active(true);
-    m_ecs.add_component<PlayerComponent>(player_id, "main_player");
-    m_ecs.add_component<FPControllerComponent>(player_id);
-
     // Spider
     m_ecs.add_component<TransformComponent>(spider_id, glm::vec3(4.0f, 0.0f, 0.0f), glm::quat(1, 0, 0, 0),
                                             glm::vec3(0.005f));
@@ -96,6 +89,21 @@ bool Application::init() {
     m_ecs.add_component<ModelComponent>(backpack_id, backpack_model_id);
     m_ecs.add_component<RigidBodyComponent>(backpack_id, 3.0f);
     m_ecs.add_component<ColliderComponent>(backpack_id);
+
+    // Player
+    auto& pl_tr = m_ecs.add_component<TransformComponent>(player_id, glm::vec3(0.0f, 0.0f, 4.0f));
+    pl_tr.set_scale(glm::vec3(1.0f, 2.0f, 1.0f));
+    pl_tr.update_position(glm::vec3(0.0f, pl_tr.scale().y * 0.5f, 0.0f));  // feet on ground
+    // m_ecs.add_component<ModelComponent>(player_id, player_model_id);
+    m_ecs.add_component<RigidBodyComponent>(player_id, 60.0f);
+    m_ecs.add_component<ColliderComponent>(player_id);
+    auto& main_camera = m_ecs.add_component<CameraComponent>(player_id, glm::vec3(0.0f, 0.4f, 0.0f));
+    main_camera.is_active = true;
+    m_ecs.add_component<PlayerComponent>(player_id, "main_player");
+    m_ecs.add_component<FPControllerComponent>(player_id);
+    m_ecs.add_component<SoundListenerComponent>(player_id);
+    auto& pl_ss = m_ecs.add_component<SoundSourceComponent>(player_id);
+    pl_ss.register_sound("Jump", jump_sound_id);
 
     // Light
     m_ecs.add_component<TransformComponent>(main_light_id, glm::vec3(0.0f, 10.0f, 30.0f),
@@ -111,6 +119,7 @@ bool Application::init() {
     m_sm.add_system<CameraSystem>(main_camera);
     m_sm.add_system<RotationSystem>();
     m_sm.add_system<RenderSystem>();
+    m_sm.add_system<SoundSystem>();
     m_sm.init_all(m_ecs);
 
     // Define actions
@@ -157,7 +166,7 @@ void Application::run() {
     const double fixed_dt = 1.0 / 60.0;  // 60Hz
 
     // FPS tracking
-    int frames = 0;
+    int32_t frames = 0;
     double fps_time = 0.0;
 
     while (!m_window.should_close()) {

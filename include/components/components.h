@@ -9,3 +9,5 @@
 #include "components/rigid_body_component.h"
 #include "components/rotator_component.h"
 #include "components/transform_component.h"
+#include "components/sound_source_component.h"
+#include "components/sound_listener_component.h"

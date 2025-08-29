@@ -1,9 +1,7 @@
 #include "assets/texture.h"
 #include "core/log.h"
 
-#include <iostream>
 #include <cstring>
-#include <memory>
 
 static GLenum ToGLWrap(TextureWrap w) {
     return static_cast<GLenum>(w);
@@ -45,7 +43,7 @@ std::optional<std::shared_ptr<Texture>> Texture::load_from_file(const std::strin
     int32_t w = 0;
     int32_t h = 0;
     int32_t channels = 0;
-    unsigned char* data = stbi_load(path.c_str(), &w, &h, &channels, 0);
+    uint8_t* data = stbi_load(path.c_str(), &w, &h, &channels, 0);
 
     if (!data) {
         ERR("[Texture] Failed to load image: " << path << " (" << stbi_failure_reason() << ")")
@@ -54,7 +52,7 @@ std::optional<std::shared_ptr<Texture>> Texture::load_from_file(const std::strin
 
     auto tex = std::make_shared<Texture>();
 
-    bool res = tex->upload_to_GPU(w, h, channels, data, params);
+    bool res = tex->upload(w, h, channels, data, params);
     stbi_image_free(data);
 
     if (!res) {
@@ -102,7 +100,7 @@ std::shared_ptr<Texture> Texture::create_fallback() {
     }
 
     auto tex = std::make_shared<Texture>();
-    if (!tex->upload_to_GPU(size, size, channels, pixels.data(), params)) {
+    if (!tex->upload(size, size, channels, pixels.data(), params)) {
         ERR("[Texture] Failed to upload fallback");
         return nullptr;
     }
@@ -158,30 +156,36 @@ TextureType Texture::type() const {
     return m_type;
 }
 
-const std::string& Texture::path() const {
-    return m_full_path;
-}
-
 std::ostream& Texture::print(std::ostream& os) const {
     return os << "Texture(tex_id: " << m_id << ", width: " << m_width << ", height: " << m_height
               << ", channels: " << m_channels << ", type: " << m_type << ", path: " << m_full_path << ")";
 }
 
-bool Texture::upload_to_GPU(int32_t width, int32_t height, int32_t channels, const unsigned char* data,
-                            const TextureParams& params) {
+bool Texture::upload(int32_t width, int32_t height, int32_t channels, const uint8_t* data,
+                     const TextureParams& params) {
     if (width <= 0 || height <= 0 || channels <= 0 || !data) {
-        ERR("[Texture] Invalid image size or channels");
+        ERR("[Texture] Invalid arguments in upload");
         return false;
     }
 
-    GLuint tex = 0;
-    glGenTextures(1, &tex);
-    if (tex == 0) {
-        ERR("[Texture] glGenTextures failed");
+    GLenum format = GL_RGB;
+    GLenum internal_format = GL_RGB8;
+    if (channels == 4) {
+        format = GL_RGBA;
+        internal_format = params.srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+    } else if (channels == 3) {
+        format = GL_RGB;
+        internal_format = params.srgb ? GL_SRGB8 : GL_RGB8;
+    } else if (channels == 1) {
+        format = GL_RED;
+        internal_format = GL_R8;
+    } else {
+        ERR("[Texture] Unsupported channel count: " << channels);
         return false;
     }
 
-    glBindTexture(GL_TEXTURE_2D, tex);
+    glGenTextures(1, &m_id);
+    glBindTexture(GL_TEXTURE_2D, m_id);
 
     // Set pixel alignment based on row size
     GLint alignment = 4;
@@ -196,26 +200,6 @@ bool Texture::upload_to_GPU(int32_t width, int32_t height, int32_t channels, con
         alignment = 1;
     }
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
-
-    // Decide formats
-    GLenum format = GL_RGB;
-    GLenum internal_format = GL_RGB8;
-    if (channels == 4) {
-        format = GL_RGBA;
-        internal_format = params.srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
-    } else if (channels == 3) {
-        format = GL_RGB;
-        internal_format = params.srgb ? GL_SRGB8 : GL_RGB8;
-    } else if (channels == 1) {
-        format = GL_RED;
-        internal_format = GL_R8;
-    } else {
-        ERR("[Texture] Unsupported channel count: " << channels);
-
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glDeleteTextures(1, &tex);
-        return false;
-    }
 
     // Upload pixel data
     glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
@@ -239,8 +223,6 @@ bool Texture::upload_to_GPU(int32_t width, int32_t height, int32_t channels, con
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    m_id = tex;
 
     return true;
 }

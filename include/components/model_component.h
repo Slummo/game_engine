@@ -6,6 +6,7 @@
 
 #include <glm/glm.hpp>
 #include <limits>
+#include <cstdint>
 
 struct ModelComponent : public IComponent {
     ModelComponent(AssetID model_id = 0) : asset_id(model_id) {
@@ -27,7 +28,7 @@ struct ModelComponent : public IComponent {
     AssetID asset_id = 0;
     AABB local_aabb;
     bool visible = false;
-    int material_override_index = -1;  // optional per-submesh override
+    int32_t material_override_index = -1;  // optional per-submesh override
     bool casts_shadows = true;
-    int layer = 0;  // rendering layer / culling mask
+    int32_t layer = 0;  // rendering layer / culling mask
 };

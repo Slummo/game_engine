@@ -2,9 +2,8 @@
 #include "core/application.h"
 #include "core/log.h"
 
-#include <iostream>
-
 bool Window::create(Application* app_ptr, int32_t width, int32_t height, const std::string& title) {
+    // GLFW
     if (!glfwInit()) {
         ERR("[Window] Failed to init GLFW");
         return false;
@@ -26,15 +25,15 @@ bool Window::create(Application* app_ptr, int32_t width, int32_t height, const s
     glfwSetWindowUserPointer(m_handle, app_ptr);
 
     // Set callbacks
-    glfwSetFramebufferSizeCallback(m_handle,
-                                   [](GLFWwindow* /*w*/, int width, int height) { glViewport(0, 0, width, height); });
+    glfwSetFramebufferSizeCallback(
+        m_handle, [](GLFWwindow* /*w*/, int32_t width, int32_t height) { glViewport(0, 0, width, height); });
 
-    glfwSetKeyCallback(m_handle, [](GLFWwindow* w, int key, int scancode, int action, int mods) {
+    glfwSetKeyCallback(m_handle, [](GLFWwindow* w, int32_t key, int32_t scancode, int32_t action, int32_t mods) {
         Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
         app->get_input_manager().on_key(key, scancode, action, mods);
     });
 
-    glfwSetMouseButtonCallback(m_handle, [](GLFWwindow* w, int button, int action, int mods) {
+    glfwSetMouseButtonCallback(m_handle, [](GLFWwindow* w, int32_t button, int32_t action, int32_t mods) {
         Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
         app->get_input_manager().on_mouse_button(button, action, mods);
     });
@@ -49,13 +48,20 @@ bool Window::create(Application* app_ptr, int32_t width, int32_t height, const s
         app->get_input_manager().on_scroll(xoffset, yoffset);
     });
 
-    glfwSetCharCallback(m_handle, [](GLFWwindow* w, unsigned int codepoint) {
+    glfwSetCharCallback(m_handle, [](GLFWwindow* w, uint32_t codepoint) {
         Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
         app->get_input_manager().on_char(codepoint);
     });
 
     m_width = width;
     m_height = height;
+
+    // OpenAL
+    ALCdevice* device = alcOpenDevice(NULL);
+    if (device) {
+        ALCcontext* context = alcCreateContext(device, NULL);
+        alcMakeContextCurrent(context);
+    }
 
     return true;
 }

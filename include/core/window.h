@@ -4,6 +4,7 @@
 #include <glad/glad.h>  // Import glad first
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
+#include <AL/alc.h>
 
 class Application;
 

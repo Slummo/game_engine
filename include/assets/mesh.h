@@ -95,5 +95,5 @@ private:
     uint32_t m_ebo = 0;
 
     void compute_local_aabb(const void* vertices);
-    void upload_to_GPU(const void* vertices, const void* indices);
+    void upload(const void* vertices, const void* indices);
 };

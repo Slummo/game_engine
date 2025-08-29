@@ -18,7 +18,7 @@ enum class EventType { KeyDown, KeyUp, MouseDown, MouseUp, MouseMove, Scroll, Ac
 
 struct KeyPayload {
     Key key;
-    int mods;
+    int32_t mods;
 };
 
 struct MouseButtonPayload {
@@ -76,11 +76,11 @@ public:
     InputManager();
 
     // Called by GLFW callbacks
-    void on_key(int key, int /*scancode*/, int action, int mods);
-    void on_mouse_button(int button, int action, int /*mods*/);
+    void on_key(int32_t key, int32_t /*scancode*/, int32_t action, int32_t mods);
+    void on_mouse_button(int32_t button, int32_t action, int32_t /*mods*/);
     void on_cursor_pos(double xpos, double ypos);
     void on_scroll(double /*xoffset*/, double yoffset);
-    void on_char(unsigned int codepoint);
+    void on_char(uint32_t codepoint);
 
     // To use a callbacks system
     void on_action_pressed(const std::string& name, ActionCallback cb);
@@ -105,7 +105,7 @@ public:
     // Action/axis interface
     void register_action(const Action& a);
     void register_action(const std::string& name, std::vector<Binding> bindings);
-    void register_action(const std::string& name, InputType type, int key, int mod = 0);
+    void register_action(const std::string& name, InputType type, int32_t key, int32_t mod = 0);
     void unregister_action(const std::string& name);
     float get_axis(const std::string& axis_name) const;      // -1..1
     bool get_action_down(const std::string& name) const;     // held

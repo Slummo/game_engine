@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <glm/glm.hpp>
+#include <cstdint>
 
 class CollisionSystem : public ISystem {
 public:
@@ -79,7 +80,7 @@ private:
     // TODO Implement capsule combinations
 
     // Resolve contacts
-    void resolve_contacts(ECS& ecs, std::vector<Contact> contacts, int solver_iterations = 2);
+    void resolve_contacts(ECS& ecs, std::vector<Contact> contacts, int32_t solver_iterations = 2);
     void resolve_phys_contact(ECS& ecs, const Contact& c);
     void positional_correction(ECS& ecs, const Contact& c);
     void resolve_trigger_contact(ECS& ecs, const Contact& c);

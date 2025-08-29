@@ -20,11 +20,11 @@ CXXFLAGS		:= $(CXXSTD) $(COMMON_FLAGS) -Wpedantic
 CFLAGS			:= $(CSTD) $(COMMON_FLAGS)
 
 # Preprocessor flags
-CPPFLAGS		:= -I$(INCLUDE_DIR) -I$(DEPS_DIR) -I$(DEPS_DIR)/glm -I$(DEPS_DIR)/glad -I$(DEPS_DIR)/stb_image
+CPPFLAGS		:= -I$(INCLUDE_DIR) -I$(DEPS_DIR)
 
 # Linker flags
 LDFLAGS			:= 							# -L...
-LDLIBS			:= -lglfw -ldl -lGL -lassimp
+LDLIBS			:= -lglfw -ldl -lGL -lassimp -lopenal -lsndfile
 
 # Profiles flags
 DEBUG_FLAGS		:= -g -O0 -fno-omit-frame-pointer -DDEBUG

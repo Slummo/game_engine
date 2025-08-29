@@ -68,7 +68,6 @@ public:
     int32_t height() const;
     int32_t channels() const;
     TextureType type() const;
-    const std::string& path() const;
 
 protected:
     std::ostream& print(std::ostream& os) const override;
@@ -81,6 +80,5 @@ private:
     TextureType m_type = TextureType::None;
     std::string m_full_path;
 
-    bool upload_to_GPU(int32_t width, int32_t height, int32_t channels, const unsigned char* data,
-                       const TextureParams& params);
+    bool upload(int32_t width, int32_t height, int32_t channels, const uint8_t* data, const TextureParams& params);
 };

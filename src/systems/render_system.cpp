@@ -20,7 +20,7 @@ void RenderSystem::update(ECS& ecs, float /*dt*/) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Only get the main camera for now
-    for (auto [_e, _pl, cam] : ecs.entities_with<PlayerComponent, CameraComponent>()) {
+    for (auto [_e, _pl, tr, cam] : ecs.entities_with<PlayerComponent, TransformComponent, CameraComponent>()) {
         render_scene(ecs, cam);
         render_hitboxes(ecs, cam);
         render_debug(ecs, cam);
@@ -33,7 +33,7 @@ void RenderSystem::shutdown(ECS& /*ecs*/) {
     destroy_arrow();
 }
 
-void RenderSystem::render_scene(ECS& ecs, CameraComponent& camera) {
+void RenderSystem::render_scene(ECS& ecs, CameraComponent& cam) {
     AssetManager& am = AssetManager::instance();
 
     // Find a directional light
@@ -58,7 +58,6 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& camera) {
         }
 
         Model& model = am.get_asset<Model>(m.asset_id);
-
         for (AssetID mesh_id : model.meshes()) {
             Mesh& mesh = am.get_asset<Mesh>(mesh_id);
             Material& mat = am.get_asset<Material>(mesh.material_id());
@@ -67,8 +66,8 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& camera) {
             // Vertex shader
             const glm::mat4 model_mat = tr.model_matrix();
             glm::mat3 normal_mat = glm::transpose(glm::inverse(glm::mat3(model_mat)));
-            shader.set_matrix_4f("Projection", camera.proj_matrix());
-            shader.set_matrix_4f("View", camera.view_matrix());
+            shader.set_matrix_4f("Projection", cam.proj_matrix());
+            shader.set_matrix_4f("View", cam.view_matrix());
             shader.set_matrix_4f("Model", model_mat);
             shader.set_matrix_3f("Normal", normal_mat);
 
@@ -80,7 +79,7 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& camera) {
             shader.set_float("light.intensity", light.intensity);
             shader.set_bool("light.is_directional", true);
 
-            shader.set_vec_3f("camera_world_pos", camera.position());
+            shader.set_vec_3f("camera_world_pos", cam.world_position());
 
             mesh.draw();
 
@@ -90,7 +89,7 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& camera) {
     // TODO UI, post-processing, debug overlays
 }
 
-void RenderSystem::render_hitboxes(ECS& ecs, CameraComponent& camera) {
+void RenderSystem::render_hitboxes(ECS& ecs, CameraComponent& cam) {
     if (!m_hitbox_render_enabled) {
         return;
     }
@@ -103,8 +102,8 @@ void RenderSystem::render_hitboxes(ECS& ecs, CameraComponent& camera) {
         am.set_last_used_shader(m_colored_line_shader_id);
     }
 
-    shader.set_matrix_4f("Projection", camera.proj_matrix());
-    shader.set_matrix_4f("View", camera.view_matrix());
+    shader.set_matrix_4f("Projection", cam.proj_matrix());
+    shader.set_matrix_4f("View", cam.view_matrix());
 
     glLineWidth(2.0f);
 
@@ -135,7 +134,7 @@ void RenderSystem::render_hitboxes(ECS& ecs, CameraComponent& camera) {
     glLineWidth(1.0f);
 }
 
-void RenderSystem::render_debug(ECS& /*ecs*/, CameraComponent& camera) {
+void RenderSystem::render_debug(ECS& /*ecs*/, CameraComponent& cam) {
     if (!m_debug_render_enabled) {
         return;
     }
@@ -148,8 +147,8 @@ void RenderSystem::render_debug(ECS& /*ecs*/, CameraComponent& camera) {
         am.set_last_used_shader(m_colored_line_shader_id);
     }
 
-    shader.set_matrix_4f("Projection", camera.proj_matrix());
-    shader.set_matrix_4f("View", camera.view_matrix());
+    shader.set_matrix_4f("Projection", cam.proj_matrix());
+    shader.set_matrix_4f("View", cam.view_matrix());
     shader.set_matrix_4f("Model", glm::mat4(1.0f));           // identity, since positions are in world space
     shader.set_vec_3f("color", glm::vec3(1.0f, 1.0f, 0.0f));  // yellow
 
@@ -192,7 +191,7 @@ void RenderSystem::create_wire_cube() {
         -0.5f, 0.5f,  0.5f    // 7
     };
 
-    unsigned int inds[] = {
+    uint32_t inds[] = {
         0, 1, 1, 2, 2, 3, 3, 0,  // back rectangle
         4, 5, 5, 6, 6, 7, 7, 4,  // front rectangle
         0, 4, 1, 5, 2, 6, 3, 7   // connections

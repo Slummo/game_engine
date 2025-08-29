@@ -17,7 +17,7 @@ struct AABB {
 
 template <typename T>
 std::string readable_type_name() {
-    int status;
+    int32_t status;
     char* demangled = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
     std::string result = (status == 0) ? demangled : typeid(T).name();
     free(demangled);

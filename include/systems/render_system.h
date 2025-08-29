@@ -4,6 +4,7 @@
 
 #include <glm/glm.hpp>
 #include <unordered_map>
+#include <cstdint>
 
 class RenderSystem : public ISystem {
 public:
@@ -26,20 +27,20 @@ private:
 
     bool m_hitbox_render_enabled = false;
     // Hitbox buffers
-    unsigned int m_h_vao = 0;
-    unsigned int m_h_vbo = 0;
-    unsigned int m_h_ebo = 0;
+    uint32_t m_h_vao = 0;
+    uint32_t m_h_vbo = 0;
+    uint32_t m_h_ebo = 0;
 
     bool m_debug_render_enabled = false;
     // Arrow buffers
-    unsigned int m_a_vao = 0;
-    unsigned int m_a_vbo = 0;
+    uint32_t m_a_vao = 0;
+    uint32_t m_a_vbo = 0;
 
     AssetID m_colored_line_shader_id;
 
-    void render_scene(ECS& ecs, CameraComponent& camera);
-    void render_hitboxes(ECS& ecs, CameraComponent& camera);
-    void render_debug(ECS& ecs, CameraComponent& camera);
+    void render_scene(ECS& ecs, CameraComponent& cam_c);
+    void render_hitboxes(ECS& ecs, CameraComponent& cam_c);
+    void render_debug(ECS& ecs, CameraComponent& cam_c);
 
     void create_wire_cube();
     void destroy_wire_cube();

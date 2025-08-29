@@ -2,10 +2,13 @@
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
 #include <algorithm>
 #include <limits>
 
-#define EPS 1e-6f
+#define COL_EPS 1e-6f
+#define COR_PER 0.1f  // positional correction percentage
+#define SLOP 0.01f    // penetration allowance
 
 void CollisionSystem::init(ECS& ecs) {
     for (auto [e, col, m] : ecs.entities_with<ColliderComponent, ModelComponent>()) {
@@ -156,11 +159,11 @@ bool CollisionSystem::sphere_vs_sphere(EntityID a, const Sphere& A, EntityID b, 
         return false;
     }
     // Use sqrt over dist2 since glm::lenght does the same
-    float dist = sqrt(std::max(dist2, EPS));
+    float dist = sqrt(std::max(dist2, COL_EPS));
 
     out.a = a;
     out.b = b;
-    out.normal = (dist > EPS) ? (d / dist) : glm::vec3(1, 0, 0);
+    out.normal = (dist > COL_EPS) ? (d / dist) : glm::vec3(1, 0, 0);
     out.penetration = rsum - dist;
     out.position = A.center + out.normal * (A.radius - out.penetration * 0.5f);
     out.is_trigger = false;
@@ -180,11 +183,11 @@ bool CollisionSystem::sphere_vs_obb(EntityID a, const Sphere& s, EntityID b, con
         return false;
     }
 
-    float dist = sqrt(std::max(dist2, EPS));
+    float dist = sqrt(std::max(dist2, COL_EPS));
 
     out.a = a;
     out.b = b;
-    out.normal = (dist > EPS) ? (d / dist) : glm::vec3(1, 0, 0);
+    out.normal = (dist > COL_EPS) ? (d / dist) : glm::vec3(1, 0, 0);
     out.penetration = s.radius - dist;
     out.position = closest;
     out.is_trigger = false;
@@ -202,11 +205,11 @@ bool CollisionSystem::obb_vs_obb(EntityID a, const OBB& A, EntityID b, const OBB
     glm::vec3 t_world = B.center - A.center;
     glm::vec3 t = transpose(rot_mat_A) * t_world;  // t in A's local coords
 
-    // Compute common subexpressions abs(rot_mat) + EPS
+    // Compute common subexpressions abs(rot_mat) + COL_EPS
     glm::mat3 abs_R;
-    for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j) {
-            abs_R[i][j] = std::abs(rot_mat[i][j]) + EPS;
+    for (int32_t i = 0; i < 3; ++i) {
+        for (int32_t j = 0; j < 3; ++j) {
+            abs_R[i][j] = std::abs(rot_mat[i][j]) + COL_EPS;
         }
     }
 
@@ -237,7 +240,7 @@ bool CollisionSystem::obb_vs_obb(EntityID a, const OBB& A, EntityID b, const OBB
     // Test axes L0, L1, L2 (A's local axes)
     // For A frame i: proj_a = a_he[i]
     // For B frame onto A axis: proj_b = sum_j (b_he[j] * abs_R[i][j])
-    for (int i = 0; i < 3 && !separated; ++i) {
+    for (int32_t i = 0; i < 3 && !separated; ++i) {
         float proj_a = a_he[i];
         float proj_b = b_he[0] * abs_R[i][0] + b_he[1] * abs_R[i][1] + b_he[2] * abs_R[i][2];
         float dist = t[i];  // projection of t onto A's axis i (since t is in A frame)
@@ -250,7 +253,7 @@ bool CollisionSystem::obb_vs_obb(EntityID a, const OBB& A, EntityID b, const OBB
     // Test axes M0, M1, M2 (B's local axes)
     // For A frame onto B axis: proj_a = sum_i (a_he[i] * abs_R[i][j])
     // For B frame j = proj_b = b_he[j]
-    for (int j = 0; j < 3 && !separated; ++j) {
+    for (int32_t j = 0; j < 3 && !separated; ++j) {
         float proj_a = a_he[0] * abs_R[0][j] + a_he[1] * abs_R[1][j] + a_he[2] * abs_R[2][j];
         float proj_b = b_he[j];
         // distance = dot(t, rot_mat[:,j]) -> since t is A-frame coords, dot with column j of rot_mat
@@ -262,14 +265,14 @@ bool CollisionSystem::obb_vs_obb(EntityID a, const OBB& A, EntityID b, const OBB
     }
 
     // Test cross product axes (9 tests)
-    for (int i = 0; i < 3 && !separated; ++i) {
-        for (int j = 0; j < 3 && !separated; ++j) {
+    for (int32_t i = 0; i < 3 && !separated; ++i) {
+        for (int32_t j = 0; j < 3 && !separated; ++j) {
             // axis = A_i x B_j (expressed in world)
             glm::vec3 Ai = rot_mat_A * glm::vec3((i == 0), (i == 1), (i == 2));
             glm::vec3 Bj = rot_mat_B * glm::vec3((j == 0), (j == 1), (j == 2));
             glm::vec3 axis_world = cross(Ai, Bj);
             float axis_len2 = dot(axis_world, axis_world);
-            if (axis_len2 < EPS) {
+            if (axis_len2 < COL_EPS) {
                 continue;
             }
 
@@ -277,14 +280,14 @@ bool CollisionSystem::obb_vs_obb(EntityID a, const OBB& A, EntityID b, const OBB
             float proj_b = 0.0f;
 
             // Projection calculation for A
-            for (int k = 0; k < 3; k++) {
+            for (int32_t k = 0; k < 3; k++) {
                 glm::vec3 Ak = rot_mat_A * glm::vec3((k == 0), (k == 1), (k == 2));
                 float proj = dot(Ak, normalize(axis_world));
                 proj_a += a_he[k] * std::abs(proj);
             }
 
             // Projection calculation for B
-            for (int k = 0; k < 3; k++) {
+            for (int32_t k = 0; k < 3; k++) {
                 glm::vec3 Bk = rot_mat_B * glm::vec3((k == 0), (k == 1), (k == 2));
                 float proj = dot(Bk, normalize(axis_world));
                 proj_b += b_he[k] * std::abs(proj);
@@ -317,13 +320,13 @@ bool CollisionSystem::obb_vs_obb(EntityID a, const OBB& A, EntityID b, const OBB
     return true;
 }
 
-void CollisionSystem::resolve_contacts(ECS& ecs, std::vector<Contact> contacts, int solver_iterations) {
+void CollisionSystem::resolve_contacts(ECS& ecs, std::vector<Contact> contacts, int32_t solver_iterations) {
     for (auto [_e, pl, fpc] : ecs.entities_with<PlayerComponent, FPControllerComponent>()) {
         fpc.is_grounded = false;
     }
 
-    for (int it = 0; it < std::max(1, solver_iterations); ++it) {
-        for (const auto& c : contacts) {
+    for (int32_t it = 0; it < std::max(1, solver_iterations); ++it) {
+        for (const Contact& c : contacts) {
             if (c.is_trigger) {
                 resolve_trigger_contact(ecs, c);
             } else {
@@ -429,14 +432,12 @@ void CollisionSystem::positional_correction(ECS& ecs, const Contact& c) {
     auto& a_tr = ecs.get_component<TransformComponent>(c.a);
     auto& b_tr = ecs.get_component<TransformComponent>(c.b);
 
-    const float percent = 0.2f;  // positional correction percentage
-    const float slop = 0.01f;    // penetration allowance
     float inv_mass_sum = a_rb.inv_mass + b_rb.inv_mass;
     if (inv_mass_sum == 0.0f) {
         return;
     }
 
-    float correction_mag = std::max(c.penetration - slop, 0.0f) / inv_mass_sum * percent;
+    float correction_mag = std::max(c.penetration - SLOP, 0.0f) / inv_mass_sum * COR_PER;
     glm::vec3 correction = correction_mag * c.normal;
 
     // move A opposite to the normal

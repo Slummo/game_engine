@@ -5,3 +5,4 @@
 #include "assets/model.h"
 #include "assets/shader.h"
 #include "assets/texture.h"
+#include "assets/sound.h"

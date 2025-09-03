@@ -323,7 +323,7 @@ void CollisionDetectionSystem::update(EntityManager& em, CollisionContext& cc) {
             continue;
         }
 
-        // TODO: filter by layer or mask
+        // TODO: filter by layer
         entries.push_back(CollisionEntry(e, &tr, &col));
     }
 
@@ -333,7 +333,7 @@ void CollisionDetectionSystem::update(EntityManager& em, CollisionContext& cc) {
             CollisionEntry& A = entries[i];
             CollisionEntry& B = entries[j];
 
-            // Layer / mask filtering
+            // Layer filtering
             if ((A.col->collides_with & A.col->layer) == 0) {
                 // TODO: user masking logic
             }

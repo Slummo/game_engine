@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/types.h"
 #include "assets/iasset.h"
 
 #include <vector>

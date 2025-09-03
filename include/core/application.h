@@ -27,5 +27,4 @@ private:
 
     bool m_running;
     bool m_cursor_enabled;
-    bool m_wiremode;
 };

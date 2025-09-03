@@ -3,7 +3,7 @@
 #include "systems/isystem.h"
 #include "systems/systems.h"
 #include "core/log.h"
-#include "core/types.h"
+#include "core/types/type_name.h"
 
 #include <unordered_map>
 #include <typeindex>

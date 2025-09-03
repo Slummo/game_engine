@@ -5,17 +5,28 @@
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
 #include <cstdint>
+#include <GLFW/glfw3.h>
 
-void RenderSystem::init(EntityManager& em) {
+void RenderSystem::init(EntityManager& em, InputContext& ic) {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
     create_wire_cube();
     create_arrow(em);
     m_colored_line_shader_id = AssetManager::instance().load_asset<ShaderAsset>("colored_line/");
+
+    ic.register_action("ToggleWiremode", InputType::Key, GLFW_KEY_M, GLFW_MOD_CONTROL);
+    ic.on_action_pressed("ToggleWiremode", [this]() {
+        m_wiremode = !m_wiremode;
+        glPolygonMode(GL_FRONT_AND_BACK, m_wiremode ? GL_LINE : GL_FILL);
+    });
+    ic.register_action("ToggleHitboxes", InputType::Key, GLFW_KEY_H, GLFW_MOD_CONTROL);
+    ic.on_action_pressed("ToggleHitboxes", [this]() { m_hitbox_render_enabled = !m_hitbox_render_enabled; });
+    ic.register_action("ToggleDebug", InputType::Key, GLFW_KEY_F, GLFW_MOD_CONTROL);
+    ic.on_action_pressed("ToggleDebug", [this]() { m_debug_render_enabled = !m_debug_render_enabled; });
 }
 
-void RenderSystem::update(EntityManager& em) {
+void RenderSystem::update(EntityManager& em, InputContext& /*ic*/) {
     glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -27,7 +38,7 @@ void RenderSystem::update(EntityManager& em) {
     }
 }
 
-void RenderSystem::shutdown(EntityManager& /*em*/) {
+void RenderSystem::shutdown(EntityManager& /*em*/, InputContext& /*ic*/) {
     AssetManager::instance().get_asset<ShaderAsset>(m_colored_line_shader_id).destroy();
     destroy_wire_cube();
     destroy_arrow();
@@ -161,21 +172,6 @@ void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam) {
 
 void RenderSystem::set_environment(AssetID hdr_env) {
     m_environment = hdr_env;
-}
-
-bool RenderSystem::is_hitbox_render_enabled() {
-    return m_hitbox_render_enabled;
-}
-
-void RenderSystem::toggle_hitbox_render_enabled() {
-    m_hitbox_render_enabled = !m_hitbox_render_enabled;
-}
-
-bool RenderSystem::is_debug_render_enabled() {
-    return m_debug_render_enabled;
-}
-void RenderSystem::toggle_debug_render_enabled() {
-    m_debug_render_enabled = !m_debug_render_enabled;
 }
 
 void RenderSystem::create_wire_cube() {

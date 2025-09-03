@@ -21,8 +21,6 @@ public:
     void get_framebuffer_size(int32_t* x, int32_t* y) const;
     double get_time() const;
     void set_input_mode(int32_t mode, int32_t value) const;
-    void set_viewport(int32_t x, int32_t y) const;
-    void set_wiremode(bool value) const;
     void close() const;
     void destroy();
 

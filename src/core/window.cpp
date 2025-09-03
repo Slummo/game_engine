@@ -33,7 +33,7 @@ bool Window::create(Application* app_ptr, int32_t width, int32_t height, const s
     // Set viewport
     int32_t fb_w, fb_h;
     get_framebuffer_size(&fb_w, &fb_h);
-    set_viewport(fb_w, fb_h);
+    glViewport(0, 0, fb_w, fb_h);
 
     // Set callbacks
     glfwSetFramebufferSizeCallback(
@@ -108,14 +108,6 @@ double Window::get_time() const {
 }
 void Window::set_input_mode(int32_t mode, int32_t value) const {
     glfwSetInputMode(m_handle, mode, value);
-}
-
-void Window::set_viewport(int32_t x, int32_t y) const {
-    glViewport(0, 0, x, y);
-}
-
-void Window::set_wiremode(bool value) const {
-    glPolygonMode(GL_FRONT_AND_BACK, value ? GL_LINE : GL_FILL);
 }
 
 void Window::close() const {

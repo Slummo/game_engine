@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/types.h"
+#include "core/types/id.h"
 #include "components/icomponent.h"
 
 #include <cmath>

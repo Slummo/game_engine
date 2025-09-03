@@ -1,25 +1,29 @@
 #pragma once
 
-#include "core/types.h"
+#include "core/types/contact.h"
+#include "core/types/layers.h"
 #include "components/icomponent.h"
 
 #include <glm/glm.hpp>
 #include <string>
-#include <cstdint>
 #include <algorithm>
+#include <functional>
 
 enum class ColliderType { OBB, Sphere, Capsule };  // TODO implement capsule collision
-using LayerMask = uint32_t;
+
+using OnCollisionCallback = std::function<void(const Contact&)>;
 
 struct Collider : public IComponent {
     Collider(ColliderType type = ColliderType::OBB) : type(type) {
     }
 
     ColliderType type = ColliderType::OBB;
-    glm::vec3 size{1.0f};     // dimensions for OBB, x radius for sphere, x radius y height for capsule
-    glm::vec3 offset{0.0f};   // local offset from the entity's origin
-    bool is_trigger = false;  // trigger or physical collider
+    glm::vec3 size{1.0f};    // dimensions for OBB, x radius for sphere, x radius y height for capsule
+    glm::vec3 offset{0.0f};  // local offset from the entity's origin
+    bool is_trigger = false;
     bool is_enabled = true;
-    LayerMask layer = 1;
-    LayerMask collides_with = 0xFFFFFFFF;
+    LayerMask layer = Layers::Default;
+    LayerMask collides_with = 0xFFFFFFFF;  // everything
+
+    OnCollisionCallback on_collision;
 };

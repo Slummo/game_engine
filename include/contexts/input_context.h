@@ -16,40 +16,6 @@ using MouseButton = int32_t;
 
 enum struct InputType { Key, MouseButton };
 
-enum class EventType { KeyDown, KeyUp, MouseDown, MouseUp, MouseMove, Scroll, ActionTriggered };
-
-struct KeyPayload {
-    Key key;
-    int32_t mods;
-};
-
-struct MouseButtonPayload {
-    MouseButton btn;
-};
-
-struct MouseMovePayload {
-    double dx;
-    double dy;
-};
-
-struct MouseScrollPayload {
-    double offset;
-};
-
-struct ActionPayload {
-    std::string action;
-    float value;
-};
-
-using EventPayload =
-    std::variant<std::monostate, KeyPayload, MouseButtonPayload, MouseMovePayload, MouseScrollPayload, ActionPayload>;
-
-struct Event {
-    EventType type;
-    double timestamp;
-    EventPayload payload;
-};
-
 // What input triggers an Action
 struct Binding {
     Binding(InputType type, int32_t code, int32_t mods = 0, float scale = 1.0f, bool invert = false);
@@ -77,71 +43,79 @@ class InputContext : public IContext {
 public:
     InputContext();
 
-    // Called by GLFW callbacks
+    // GLFW callbacks
     void on_key(int32_t key, int32_t /*scancode*/, int32_t action, int32_t mods);
     void on_mouse_button(int32_t button, int32_t action, int32_t /*mods*/);
     void on_cursor_pos(double xpos, double ypos);
     void on_scroll(double /*xoffset*/, double yoffset);
     void on_char(uint32_t codepoint);
 
-    // To use a callbacks system
-    void on_action_pressed(const std::string& name, ActionCallback cb);
-
     // Call each frame to update internal state
-    void begin_frame(double current_time);
+    void begin_frame();
     void end_frame();
 
-    // Polling API
-    bool is_key_down(Key k) const;
-    bool was_key_pressed(Key k) const;  // pressed this frame
-    bool was_key_released(Key k) const;
+    // Actions registration
 
-    bool is_mouse_button_down(MouseButton b) const;
-    glm::dvec2 mouse_pos() const;
-    glm::dvec2 mouse_delta() const;
-    double scroll_delta() const;  // since last frame
-
-    void set_mouse_pos(glm::dvec2 pos);
-    void set_mouse_delta(glm::dvec2 delta);
-
-    // Action/axis interface
     void register_action(const Action& a);
     void register_action(const std::string& name, std::vector<Binding> bindings);
     void register_action(const std::string& name, InputType type, int32_t key, int32_t mod = 0);
     void unregister_action(const std::string& name);
-    float get_axis(const std::string& axis_name) const;      // -1..1
-    bool get_action_down(const std::string& name) const;     // held
-    bool get_action_pressed(const std::string& name) const;  // pressed this frame
+
+    // --- Polling API (is_*_down = held, was_*_pressed = pressed this frame, was_*_released = released this frame) ---
+
+    bool is_key_down(Key k) const;
+    bool was_key_pressed(Key k) const;
+    bool was_key_released(Key k) const;
+    bool is_mouse_button_down(MouseButton b) const;
+    bool was_mouse_button_pressed(MouseButton b) const;
+    bool was_mouse_button_released(MouseButton b) const;
+    bool is_action_down(const std::string& name) const;
+    bool was_action_pressed(const std::string& name) const;
+    bool was_action_released(const std::string& name) const;
+
+    // --- Callback API ---
+
+    void on_action_pressed(const std::string& name, ActionCallback cb);
+    void on_action_released(const std::string& name, ActionCallback cb);
+
+    // Getters and setters
+
+    glm::dvec2 mouse_pos() const;
+    glm::dvec2 mouse_delta() const;
+    double scroll_delta() const;  // since last frame
+    void set_mouse_pos(glm::dvec2 pos);
+    void set_mouse_delta(glm::dvec2 delta);
+    float axis(const std::string& axis_name) const;  // -1..1
 
 private:
+    // Keys
     static constexpr size_t MAX_KEYS = 1024;
     std::bitset<MAX_KEYS> m_curr_keys;
     std::bitset<MAX_KEYS> m_prev_keys;
     int32_t m_curr_mods = 0;
 
+    // Mouse buttons
     std::bitset<32> m_curr_mouse_btns;
     std::bitset<32> m_prev_mouse_btns;
 
+    // Mouse position and scroll
     glm::dvec2 m_mouse_pos{0.0};
     glm::dvec2 m_prev_mouse_pos{0.0};
     glm::dvec2 m_mouse_delta{0.0};
     double m_scroll_delta = 0.0;
     double m_scroll_accum = 0.0;
 
-    double m_time = 0.0;
-
+    // Actions
     std::unordered_map<std::string, Action> m_actions;
-    std::unordered_map<std::string, std::vector<ActionCallback>> m_action_pressed_callbacks;
-
-    // Cached evaluation results
     std::unordered_map<std::string, float> m_axis_cache;
     std::unordered_map<std::string, bool> m_action_down_cache;
     std::unordered_map<std::string, bool> m_action_pressed_cache;
+    std::unordered_map<std::string, bool> m_action_released_cache;
 
-    // per-frame event queue
-    std::vector<Event> m_events;
+    // Callbacks
+    std::unordered_map<std::string, std::vector<ActionCallback>> m_action_pressed_callbacks;
+    std::unordered_map<std::string, std::vector<ActionCallback>> m_action_released_callbacks;
 
-    // helpers
-    void emit_event(const Event& ev);
+    // Helper
     float eval_binding(const Binding& b) const;
 };

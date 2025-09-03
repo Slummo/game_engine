@@ -6,23 +6,17 @@
 #include <unordered_map>
 #include <cstdint>
 
-class RenderSystem : public ISystem<> {
+class RenderSystem : public ISystem<InputContext> {
 public:
-    RenderSystem() = default;
-
-    void init(EntityManager& em) override;
-    void update(EntityManager& em) override;
-    void shutdown(EntityManager& em) override;
+    void init(EntityManager& em, InputContext& ic) override;
+    void update(EntityManager& em, InputContext& ic) override;
+    void shutdown(EntityManager& em, InputContext& ic) override;
 
     void set_environment(AssetID hdr_env);
 
-    bool is_hitbox_render_enabled();
-    void toggle_hitbox_render_enabled();
-
-    bool is_debug_render_enabled();
-    void toggle_debug_render_enabled();
-
 private:
+    bool m_wiremode = false;
+
     AssetID m_environment;
 
     bool m_hitbox_render_enabled = false;

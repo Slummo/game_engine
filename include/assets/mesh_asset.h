@@ -1,12 +1,10 @@
 #pragma once
 
 #include "assets/iasset.h"
-#include "core/types.h"
+#include "core/types/aabb.h"
 
 #include <vector>
-#include <glm/glm.hpp>
 #include <string>
-#include <cstdint>
 #include <memory>
 
 enum VertexFormat { POS_TEX, POS_NOR_TEX };

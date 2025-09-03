@@ -1,12 +1,10 @@
 #pragma once
 
-#include "core/types.h"
 #include "components/icomponent.h"
 #include "managers/asset_manager.h"
 
 #include <glm/glm.hpp>
 #include <limits>
-#include <cstdint>
 
 struct Model : public IComponent {
     Model(AssetID model_id = 0) : asset_id(model_id) {

@@ -1,19 +1,8 @@
 #pragma once
 
-#include <cstdint>
+#include <string>
 #include <cxxabi.h>
-#include <iostream>
-#include <memory>
 #include <typeinfo>
-#include <glm/glm.hpp>
-
-using EntityID = uint32_t;
-using AssetID = uint64_t;
-
-struct AABB {
-    glm::vec3 min;
-    glm::vec3 max;
-};
 
 template <typename T>
 std::string readable_type_name() {

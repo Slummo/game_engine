@@ -9,9 +9,21 @@
 #define FP_EPS 1e-6f
 #define JMSRF 0.65f  // Jumping movement speed reduction factor
 
+void FirstPersonControllerSystem::init(EntityManager& em, PhysicsContext& /*pc*/, InputContext& ic) {
+    ic.register_action("MoveLeft", InputType::Key, GLFW_KEY_A);
+    ic.register_action("MoveRight", InputType::Key, GLFW_KEY_D);
+    ic.register_action("MoveForwards", InputType::Key, GLFW_KEY_W);
+    ic.register_action("MoveBackwards", InputType::Key, GLFW_KEY_S);
+    ic.register_action("Jump", InputType::Key, GLFW_KEY_SPACE);
+    ic.on_action_pressed("Jump", [this, &em]() {
+        for (auto [e, fpc] : em.entities_with<FPController>()) {
+            fpc.should_jump = true;
+        }
+    });
+}
+
 void FirstPersonControllerSystem::update(EntityManager& em, PhysicsContext& pc, InputContext& ic) {
-    for (auto [e, tr, rb, col, pl, cam, fpc] :
-         em.entities_with<Transform, RigidBody, Collider, Player, Camera, FPController>()) {
+    for (auto [e, tr, rb, col, cam, fpc] : em.entities_with<Transform, RigidBody, Collider, Camera, FPController>()) {
         // Mouse look
         glm::vec2 mouse_delta = ic.mouse_delta();
         cam.update_yaw(mouse_delta.x * fpc.look_speed);     // + for right
@@ -29,17 +41,17 @@ void FirstPersonControllerSystem::update(EntityManager& em, PhysicsContext& pc, 
         glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
 
         glm::vec3 move_dir(0.0f);
-        if (ic.is_key_down(GLFW_KEY_W)) {
-            move_dir += forward;
+        if (ic.is_action_down("MoveLeft")) {
+            move_dir -= right;
         }
-        if (ic.is_key_down(GLFW_KEY_S)) {
-            move_dir -= forward;
-        }
-        if (ic.is_key_down(GLFW_KEY_D)) {
+        if (ic.is_action_down("MoveRight")) {
             move_dir += right;
         }
-        if (ic.is_key_down(GLFW_KEY_A)) {
-            move_dir -= right;
+        if (ic.is_action_down("MoveForwards")) {
+            move_dir += forward;
+        }
+        if (ic.is_action_down("MoveBackwards")) {
+            move_dir -= forward;
         }
 
         // Normalize to avoid faster diagonal movement
@@ -95,15 +107,15 @@ void FirstPersonControllerSystem::update(EntityManager& em, PhysicsContext& pc, 
                 rb.apply_impulse(jump_impulse);
             }
 
-            fpc.should_jump = false;  // consumed
-            fpc.is_grounded = false;  // now airborne
-
-            // Sound
+            // Play jump sound
             if (em.has_component<SoundSource>(e)) {
                 auto& ss = em.get_component<SoundSource>(e);
                 ss.set_sound("Jump");
-                ss.play();
+                ss.should_play = true;
             }
+
+            fpc.should_jump = false;
+            fpc.is_grounded = false;
         }
     }
 }

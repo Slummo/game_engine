@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstdint>
 
-Application::Application() : m_running(true), m_cursor_enabled(true), m_wiremode(false) {
+Application::Application() : m_running(true), m_cursor_enabled(true) {
 }
 
 bool Application::init() {
@@ -60,13 +60,16 @@ bool Application::init() {
     em.add_component<RigidBody>(cube_id, 10.0f);
     em.add_component<Collider>(cube_id);
     em.add_component<Rotator>(cube_id);
+    em.add_component<SoundSource>(cube_id);
+    em.add_component<CollisionSound>(cube_id, "block_collision.mp3");
 
     // Floor
     auto& floor_tr = em.add_component<Transform>(plane_id, glm::vec3(0.0f, -0.25f, 0.0f));
     floor_tr.set_scale(glm::vec3(200.0f, 0.5f, 200.0f));
     em.add_component<Model>(plane_id, floor_model_id);
     em.add_component<RigidBody>(plane_id, 0.0f, true);
-    em.add_component<Collider>(plane_id);
+    auto& floor_col = em.add_component<Collider>(plane_id);
+    floor_col.layer = Layers::Ground;
 
     // Spider
     em.add_component<Transform>(spider_id, glm::vec3(4.0f, 0.0f, 0.0f), glm::quat(1, 0, 0, 0), glm::vec3(0.005f));
@@ -88,14 +91,16 @@ bool Application::init() {
     pl_tr.update_position(glm::vec3(0.0f, pl_tr.scale().y * 0.5f, 0.0f));  // feet on ground
     // em.add_component<Model>(player_id, player_model_id);
     em.add_component<RigidBody>(player_id, 60.0f);
-    em.add_component<Collider>(player_id);
+    auto& pl_col = em.add_component<Collider>(player_id);
+    pl_col.layer = Layers::Player;
+    pl_col.collides_with = Layers::Ground;
     auto& main_camera = em.add_component<Camera>(player_id, glm::vec3(0.0f, 0.4f, 0.0f));
     main_camera.is_active = true;
     em.add_component<Player>(player_id, "main_player");
     em.add_component<FPController>(player_id);
     em.add_component<SoundListener>(player_id);
     auto& pl_ss = em.add_component<SoundSource>(player_id);
-    pl_ss.register_sound("Jump", jump_sound_id);
+    pl_ss.add_sound("Jump", jump_sound_id);
 
     // Light
     em.add_component<Transform>(main_light_id, glm::vec3(0.0f, 10.0f, 30.0f),
@@ -136,21 +141,6 @@ bool Application::init() {
             ic.set_mouse_pos(glm::dvec2{size.x / 2.0, size.y / 2.0});
         }
     });
-    ic.register_action("ToggleWiremode", InputType::Key, GLFW_KEY_M, GLFW_MOD_CONTROL);
-    ic.on_action_pressed("ToggleWiremode", [this]() {
-        m_wiremode = !m_wiremode;
-        window.set_wiremode(m_wiremode);
-    });
-    ic.register_action("ToggleHitboxes", InputType::Key, GLFW_KEY_H, GLFW_MOD_CONTROL);
-    ic.on_action_pressed("ToggleHitboxes", [this]() { sm.get_system<RenderSystem>().toggle_hitbox_render_enabled(); });
-    ic.register_action("Jump", InputType::Key, GLFW_KEY_SPACE);
-    ic.on_action_pressed("Jump", [this]() {
-        for (auto [_e, _pl, fpc] : em.entities_with<Player, FPController>()) {
-            fpc.should_jump = true;
-        }
-    });
-    ic.register_action("ToggleDebug", InputType::Key, GLFW_KEY_F, GLFW_MOD_CONTROL);
-    ic.on_action_pressed("ToggleDebug", [this]() { sm.get_system<RenderSystem>().toggle_debug_render_enabled(); });
 
     window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     window.show();
@@ -189,13 +179,9 @@ void Application::run() {
         }
 
         window.poll_events();
-
-        ic.begin_frame(now);
-
+        ic.begin_frame();
         sm.update_all(em, cm);
-
         ic.end_frame();
-
         window.swap_buffers();
     }
 }

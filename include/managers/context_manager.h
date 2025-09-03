@@ -2,6 +2,7 @@
 
 #include "contexts/icontext.h"
 #include "contexts/contexts.h"
+#include "core/types/type_name.h"
 
 #include <unordered_map>
 #include <typeindex>

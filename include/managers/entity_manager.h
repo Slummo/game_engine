@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/types.h"
+#include "core/types/id.h"
 #include "components/icomponent.h"
 
 #include <unordered_map>
@@ -44,11 +44,25 @@ public:
         return get_pool<T>().add_component(entity_id, std::forward<Args>(args)...);
     }
 
+    // Adds multiple components that don't have arguments in their constructors
+    template <typename... Components>
+        requires(std::is_base_of_v<IComponent, Components> && ...)
+    void add_components(EntityID entity_id) {
+        (add_component<Components>(entity_id), ...);
+    }
+
     // Checks if an entity has a certain component attached
     template <typename T>
         requires std::is_base_of_v<IComponent, T>
     bool has_component(EntityID entity_id) {
         return get_pool<T>().has_component(entity_id);
+    }
+
+    // Checks if an entity has certain components attached
+    template <typename... Components>
+        requires(std::is_base_of_v<IComponent, Components> && ...)
+    bool has_components(EntityID entity_id) {
+        return (has_component<Components>(entity_id) && ...);
     }
 
     // Returns the certain component attached to the entity. Might throw
@@ -58,11 +72,25 @@ public:
         return get_pool<T>().get_component(entity_id);
     }
 
+    // Returns the certain components attached to the entity. Might throw
+    template <typename... Components>
+        requires(std::is_base_of_v<IComponent, Components> && ...)
+    auto get_components(EntityID entity_id) {
+        return std::tie(get_component<Components>(entity_id)...);
+    }
+
     // Removes the certain component attached to the entity. Might throw
     template <typename T>
         requires std::is_base_of_v<IComponent, T>
     void remove_component(EntityID entity_id) {
         get_pool<T>().remove_component(entity_id);
+    }
+
+    // Removes the certain components attached to the entity. Might throw
+    template <typename... Components>
+        requires(std::is_base_of_v<IComponent, Components> && ...)
+    void remove_components(EntityID entity_id) {
+        (remove_component<Components>(entity_id), ...);
     }
 
     template <typename... Components>

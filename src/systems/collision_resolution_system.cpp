@@ -12,6 +12,20 @@ void CollisionResolutionSystem::update(EntityManager& em, CollisionContext& cc) 
         if (!c.is_trigger) {
             resolve_phys_contact(em, c);
             positional_correction(em, c);
+
+            // Play collisions sounds
+            auto& col_a = em.get_component<Collider>(c.a);
+            auto& col_b = em.get_component<Collider>(c.b);
+            if (em.has_components<SoundSource, CollisionSound>(c.a) && col_b.layer != Layers::Ground) {
+                auto& ss = em.get_component<SoundSource>(c.a);
+                ss.set_sound("Collision");
+                ss.should_play = true;
+            }
+            if (em.has_components<SoundSource, CollisionSound>(c.b) && col_a.layer != Layers::Ground) {
+                auto& ss = em.get_component<SoundSource>(c.b);
+                ss.set_sound("Collision");
+                ss.should_play = true;
+            }
         }
     }
 }
@@ -97,19 +111,16 @@ void CollisionResolutionSystem::resolve_phys_contact(EntityManager& em, const Co
 }
 
 void CollisionResolutionSystem::positional_correction(EntityManager& em, const Contact& c) {
-    if (!em.has_component<RigidBody>(c.a) || !em.has_component<RigidBody>(c.b) || !em.has_component<Transform>(c.a) ||
-        !em.has_component<Transform>(c.b)) {
+    if (!em.has_components<Transform, RigidBody>(c.a) || !em.has_components<Transform, RigidBody>(c.b)) {
         return;
     }
 
-    auto& a_rb = em.get_component<RigidBody>(c.a);
-    auto& b_rb = em.get_component<RigidBody>(c.b);
+    auto [a_tr, a_rb] = em.get_components<Transform, RigidBody>(c.a);
+    auto [b_tr, b_rb] = em.get_components<Transform, RigidBody>(c.b);
+
     if (a_rb.is_static && b_rb.is_static) {
         return;
     }
-
-    auto& a_tr = em.get_component<Transform>(c.a);
-    auto& b_tr = em.get_component<Transform>(c.b);
 
     float inv_mass_sum = a_rb.inv_mass + b_rb.inv_mass;
     if (inv_mass_sum == 0.0f) {

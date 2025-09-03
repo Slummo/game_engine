@@ -4,7 +4,6 @@
 
 #include <string>
 #include <glm/glm.hpp>
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <unordered_map>

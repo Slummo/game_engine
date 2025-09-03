@@ -1,11 +1,9 @@
 #pragma once
 
-#include "core/types.h"
-#include "core/log.h"
 #include "assets/iasset.h"
-
-// For every user
 #include "assets/assets.h"
+#include "core/log.h"
+#include "core/types/type_name.h"
 
 #include <unordered_map>
 #include <memory>

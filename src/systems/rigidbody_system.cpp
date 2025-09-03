@@ -16,8 +16,7 @@ void RigidBodySystem::update(EntityManager& em, PhysicsContext& pc) {
         }
 
         // Apply gravity (not to a grounded player)
-        bool is_grounded_player = em.has_component<Player>(e) && em.has_component<FPController>(e) &&
-                                  em.get_component<FPController>(e).is_grounded;
+        bool is_grounded_player = em.has_component<FPController>(e) && em.get_component<FPController>(e).is_grounded;
         if (!is_grounded_player) {
             rb.apply_force(pc.gravity * rb.mass, pc.dt);
         }

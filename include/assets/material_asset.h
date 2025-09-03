@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/types.h"
 #include "assets/iasset.h"
 #include "assets/texture_asset.h"
 #include "assets/shader_asset.h"

@@ -40,27 +40,27 @@ bool Window::create(Application* app_ptr, int32_t width, int32_t height, const s
         m_handle, [](GLFWwindow* /*w*/, int32_t width, int32_t height) { glViewport(0, 0, width, height); });
 
     glfwSetKeyCallback(m_handle, [](GLFWwindow* w, int32_t key, int32_t scancode, int32_t action, int32_t mods) {
-        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
         app->get_input_context().on_key(key, scancode, action, mods);
     });
 
     glfwSetMouseButtonCallback(m_handle, [](GLFWwindow* w, int32_t button, int32_t action, int32_t mods) {
-        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
         app->get_input_context().on_mouse_button(button, action, mods);
     });
 
     glfwSetCursorPosCallback(m_handle, [](GLFWwindow* w, double xpos, double ypos) {
-        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
         app->get_input_context().on_cursor_pos(xpos, ypos);
     });
 
     glfwSetScrollCallback(m_handle, [](GLFWwindow* w, double xoffset, double yoffset) {
-        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
         app->get_input_context().on_scroll(xoffset, yoffset);
     });
 
     glfwSetCharCallback(m_handle, [](GLFWwindow* w, uint32_t codepoint) {
-        Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(w));
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
         app->get_input_context().on_char(codepoint);
     });
 

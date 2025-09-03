@@ -7,44 +7,43 @@
 #include <cstdint>
 #include <GLFW/glfw3.h>
 
-void RenderSystem::init(EntityManager& em, InputContext& ic) {
+void RenderSystem::init(EntityManager& em, RenderContext& rc, InputContext& ic) {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    create_wire_cube();
-    create_arrow(em);
-    m_colored_line_shader_id = AssetManager::instance().load_asset<ShaderAsset>("colored_line/");
+    create_wire_cube(rc);
+    create_arrow(em, rc);
 
     ic.register_action("ToggleWiremode", InputType::Key, GLFW_KEY_M, GLFW_MOD_CONTROL);
-    ic.on_action_pressed("ToggleWiremode", [this]() {
-        m_wiremode = !m_wiremode;
-        glPolygonMode(GL_FRONT_AND_BACK, m_wiremode ? GL_LINE : GL_FILL);
+    ic.on_action_pressed("ToggleWiremode", [&]() {
+        rc.wiremode = !rc.wiremode;
+        glPolygonMode(GL_FRONT_AND_BACK, rc.wiremode ? GL_LINE : GL_FILL);
     });
     ic.register_action("ToggleHitboxes", InputType::Key, GLFW_KEY_H, GLFW_MOD_CONTROL);
-    ic.on_action_pressed("ToggleHitboxes", [this]() { m_hitbox_render_enabled = !m_hitbox_render_enabled; });
+    ic.on_action_pressed("ToggleHitboxes", [&]() { rc.hitbox_render_enabled = !rc.hitbox_render_enabled; });
     ic.register_action("ToggleDebug", InputType::Key, GLFW_KEY_F, GLFW_MOD_CONTROL);
-    ic.on_action_pressed("ToggleDebug", [this]() { m_debug_render_enabled = !m_debug_render_enabled; });
+    ic.on_action_pressed("ToggleDebug", [&]() { rc.debug_render_enabled = !rc.debug_render_enabled; });
 }
 
-void RenderSystem::update(EntityManager& em, InputContext& /*ic*/) {
+void RenderSystem::update(EntityManager& em, RenderContext& rc, InputContext& /*ic*/) {
     glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Only get the main camera for now
     for (auto [_e, _pl, tr, cam] : em.entities_with<Player, Transform, Camera>()) {
-        render_scene(em, cam);
-        render_hitboxes(em, cam);
-        render_debug(em, cam);
+        render_scene(em, cam, rc);
+        render_hitboxes(em, cam, rc);
+        render_debug(em, cam, rc);
     }
 }
 
-void RenderSystem::shutdown(EntityManager& /*em*/, InputContext& /*ic*/) {
-    AssetManager::instance().get_asset<ShaderAsset>(m_colored_line_shader_id).destroy();
-    destroy_wire_cube();
-    destroy_arrow();
+void RenderSystem::shutdown(EntityManager& /*em*/, RenderContext& rc, InputContext& /*ic*/) {
+    AssetManager::instance().get_asset<ShaderAsset>(rc.colored_line_shader_id).destroy();
+    destroy_wire_cube(rc);
+    destroy_arrow(rc);
 }
 
-void RenderSystem::render_scene(EntityManager& em, Camera& cam) {
+void RenderSystem::render_scene(EntityManager& em, Camera& cam, RenderContext& rc) {
     AssetManager& am = AssetManager::instance();
 
     // Find a directional light
@@ -58,7 +57,7 @@ void RenderSystem::render_scene(EntityManager& em, Camera& cam) {
     }
 
     for (auto [e, tr, m] : em.entities_with<Transform, Model>()) {
-        if (em.has_component<Light>(e) && !m_debug_render_enabled) {
+        if (em.has_component<Light>(e) && !rc.debug_render_enabled) {
             // Render light models only if debug render is enabled
             continue;
         }
@@ -100,17 +99,17 @@ void RenderSystem::render_scene(EntityManager& em, Camera& cam) {
     // TODO UI, post-processing, debug overlays
 }
 
-void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam) {
-    if (!m_hitbox_render_enabled) {
+void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam, RenderContext& rc) {
+    if (!rc.hitbox_render_enabled) {
         return;
     }
 
     AssetManager& am = AssetManager::instance();
 
-    ShaderAsset& shader = am.get_asset<ShaderAsset>(m_colored_line_shader_id);
-    if (am.last_used_shader() != m_colored_line_shader_id) {
+    ShaderAsset& shader = am.get_asset<ShaderAsset>(rc.colored_line_shader_id);
+    if (am.last_used_shader() != rc.colored_line_shader_id) {
         shader.use();
-        am.set_last_used_shader(m_colored_line_shader_id);
+        am.set_last_used_shader(rc.colored_line_shader_id);
     }
 
     shader.set_matrix_4f("Projection", cam.proj_matrix());
@@ -137,7 +136,7 @@ void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam) {
         shader.set_matrix_4f("Model", model);
 
         glDisable(GL_DEPTH_TEST);
-        glBindVertexArray(m_h_vao);
+        glBindVertexArray(rc.h_vao);
         glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr);
         glEnable(GL_DEPTH_TEST);
     }
@@ -145,17 +144,17 @@ void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam) {
     glLineWidth(1.0f);
 }
 
-void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam) {
-    if (!m_debug_render_enabled) {
+void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam, RenderContext& rc) {
+    if (!rc.debug_render_enabled) {
         return;
     }
 
     AssetManager& am = AssetManager::instance();
 
-    ShaderAsset& shader = am.get_asset<ShaderAsset>(m_colored_line_shader_id);
-    if (am.last_used_shader() != m_colored_line_shader_id) {
+    ShaderAsset& shader = am.get_asset<ShaderAsset>(rc.colored_line_shader_id);
+    if (am.last_used_shader() != rc.colored_line_shader_id) {
         shader.use();
-        am.set_last_used_shader(m_colored_line_shader_id);
+        am.set_last_used_shader(rc.colored_line_shader_id);
     }
 
     shader.set_matrix_4f("Projection", cam.proj_matrix());
@@ -165,16 +164,12 @@ void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam) {
 
     // Draw directional light arrow
     glLineWidth(5.0f);
-    glBindVertexArray(m_a_vao);
+    glBindVertexArray(rc.a_vao);
     glDrawArrays(GL_LINES, 0, 2);
     glLineWidth(1.0f);
 }
 
-void RenderSystem::set_environment(AssetID hdr_env) {
-    m_environment = hdr_env;
-}
-
-void RenderSystem::create_wire_cube() {
+void RenderSystem::create_wire_cube(RenderContext& rc) {
     // 8 verts of unit cube centered at origin
     float verts[] = {
         -0.5f, -0.5f, -0.5f,  // 0
@@ -193,15 +188,15 @@ void RenderSystem::create_wire_cube() {
         0, 4, 1, 5, 2, 6, 3, 7   // connections
     };
 
-    glGenVertexArrays(1, &m_h_vao);
-    glGenBuffers(1, &m_h_vbo);
-    glGenBuffers(1, &m_h_ebo);
+    glGenVertexArrays(1, &rc.h_vao);
+    glGenBuffers(1, &rc.h_vbo);
+    glGenBuffers(1, &rc.h_ebo);
 
-    glBindVertexArray(m_h_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_h_vbo);
+    glBindVertexArray(rc.h_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rc.h_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_h_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, rc.h_ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(inds), inds, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);  // position
@@ -210,22 +205,22 @@ void RenderSystem::create_wire_cube() {
     glBindVertexArray(0);
 }
 
-void RenderSystem::destroy_wire_cube() {
-    if (m_h_ebo) {
-        glDeleteBuffers(1, &m_h_ebo);
-        m_h_ebo = 0;
+void RenderSystem::destroy_wire_cube(RenderContext& rc) {
+    if (rc.h_ebo) {
+        glDeleteBuffers(1, &rc.h_ebo);
+        rc.h_ebo = 0;
     }
-    if (m_h_vbo) {
-        glDeleteBuffers(1, &m_h_vbo);
-        m_h_vbo = 0;
+    if (rc.h_vbo) {
+        glDeleteBuffers(1, &rc.h_vbo);
+        rc.h_vbo = 0;
     }
-    if (m_h_vao) {
-        glDeleteVertexArrays(1, &m_h_vao);
-        m_h_vao = 0;
+    if (rc.h_vao) {
+        glDeleteVertexArrays(1, &rc.h_vao);
+        rc.h_vao = 0;
     }
 }
 
-void RenderSystem::create_arrow(EntityManager& em) {
+void RenderSystem::create_arrow(EntityManager& em, RenderContext& rc) {
     Transform tr;
     Light light;
     for (auto [_e, l_tr, l] : em.entities_with<Transform, Light>()) {
@@ -243,24 +238,24 @@ void RenderSystem::create_arrow(EntityManager& em) {
 
     float vertices[] = {start.x, start.y, start.z, end.x, end.y, end.z};
 
-    glGenVertexArrays(1, &m_a_vao);
-    glGenBuffers(1, &m_a_vbo);
+    glGenVertexArrays(1, &rc.a_vao);
+    glGenBuffers(1, &rc.a_vbo);
 
-    glBindVertexArray(m_a_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_a_vbo);
+    glBindVertexArray(rc.a_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rc.a_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);  // position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
 }
 
-void RenderSystem::destroy_arrow() {
-    if (m_a_vbo) {
-        glDeleteBuffers(1, &m_a_vbo);
-        m_a_vbo = 0;
+void RenderSystem::destroy_arrow(RenderContext& rc) {
+    if (rc.a_vbo) {
+        glDeleteBuffers(1, &rc.a_vbo);
+        rc.a_vbo = 0;
     }
-    if (m_a_vao) {
-        glDeleteVertexArrays(1, &m_a_vao);
-        m_a_vao = 0;
+    if (rc.a_vao) {
+        glDeleteVertexArrays(1, &rc.a_vao);
+        rc.a_vao = 0;
     }
 }

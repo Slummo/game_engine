@@ -29,8 +29,7 @@ public:
 
     void destroy_entity(EntityID entity_id) {
         // Remove all components
-        for (auto& [_, pool_ptr] : m_pools) {
-            auto pool = dynamic_cast<IComponentPool*>(pool_ptr.get());
+        for (auto& [_, pool] : m_pools) {
             pool->remove_component(entity_id);
         }
 

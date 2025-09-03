@@ -8,6 +8,7 @@
 #include <typeindex>
 #include <memory>
 #include <stdexcept>
+#include <format>
 
 class ContextManager {
 public:
@@ -27,11 +28,12 @@ public:
         requires std::is_base_of_v<IContext, T>
     T& get_context() {
         std::type_index i(typeid(T));
-        auto* context = static_cast<T*>(m_contexts.at(i).get());
-        if (!context) {
-            throw std::runtime_error("[ContextManager] Trying to fetch a context that wasn't added!");
+        if (!m_contexts.contains(i)) {
+            throw std::runtime_error(
+                std::format("[ContextManager] Trying to fetch {} which wasn't added!", readable_type_name<T>()));
         }
-        return *context;
+
+        return *static_cast<T*>(m_contexts.at(i).get());
     }
 
 private:

@@ -26,11 +26,12 @@ public:
         requires std::is_base_of_v<ISystemBase, T>
     T& get_system() {
         std::type_index i(typeid(T));
-        auto* system = static_cast<T*>(m_systems.at(i).get());
-        if (!system) {
-            throw std::runtime_error("[SystemManager] Trying to fetch a system that wasn't added!");
+        if (!m_systems.contains(i)) {
+            throw std::runtime_error(
+                std::format("[SystemManager] Trying to fetch {} which wasn't added!", readable_type_name<T>()));
         }
-        return *system;
+
+        return *static_cast<T*>(m_systems.at(i).get());
     }
 
     void init_all(EntityManager& em, ContextManager& cm) {
@@ -43,6 +44,7 @@ public:
         for (auto& [i, s] : m_systems) {
             s->update(em, cm);
         }
+        cm.get_context<EventContext>().dispatch();
     }
 
     void shutdown_all(EntityManager& em, ContextManager& cm) {

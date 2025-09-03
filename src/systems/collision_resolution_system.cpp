@@ -1,9 +1,10 @@
 #include "systems/collision_resolution_system.h"
 
+#define GROUND_NORMAL_THRESHOLD 0.75f
 #define COR_PER 0.1f  // positional correction percentage
 #define SLOP 0.01f    // penetration allowance
 
-void CollisionResolutionSystem::update(EntityManager& em, CollisionContext& cc) {
+void CollisionResolutionSystem::update(EntityManager& em, CollisionContext& cc, EventContext& ec) {
     for (auto [_e, fpc] : em.entities_with<FPController>()) {
         fpc.is_grounded = false;
     }
@@ -16,18 +17,13 @@ void CollisionResolutionSystem::update(EntityManager& em, CollisionContext& cc) 
             // Play collisions sounds
             auto& col_a = em.get_component<Collider>(c.a);
             auto& col_b = em.get_component<Collider>(c.b);
-            if (em.has_components<SoundSource, CollisionSound>(c.a) && col_b.layer != Layers::Ground) {
-                auto& ss = em.get_component<SoundSource>(c.a);
-                ss.set_sound("Collision");
-                ss.should_play = true;
-            }
-            if (em.has_components<SoundSource, CollisionSound>(c.b) && col_a.layer != Layers::Ground) {
-                auto& ss = em.get_component<SoundSource>(c.b);
-                ss.set_sound("Collision");
-                ss.should_play = true;
+            if (col_a.layer != Layers::Ground && col_b.layer != Layers::Ground) {
+                ec.emit(CollisionEvent{c.a, c.b});
             }
         }
     }
+
+    ec.dispatch();
 }
 
 void CollisionResolutionSystem::resolve_phys_contact(EntityManager& em, const Contact& c) {
@@ -51,12 +47,10 @@ void CollisionResolutionSystem::resolve_phys_contact(EntityManager& em, const Co
     float normal_y_for_player = is_a_player ? -c.normal.y : c.normal.y;  // flip if player is A
     if (is_a_player || is_b_player) {
         auto& fpc = em.get_component<FPController>(is_a_player ? c.a : c.b);
-        auto& rb = em.get_component<RigidBody>(is_a_player ? c.a : c.b);
 
         // Only set grounded if moving downward and hitting mostly horizontal surface
-        if (normal_y_for_player > 0.75f && rb.velocity.y < 0.0f) {
+        if (normal_y_for_player > GROUND_NORMAL_THRESHOLD) {
             fpc.is_grounded = true;
-            rb.velocity.y = 0.0f;
         }
     }
 

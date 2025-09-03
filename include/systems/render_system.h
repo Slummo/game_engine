@@ -6,38 +6,19 @@
 #include <unordered_map>
 #include <cstdint>
 
-class RenderSystem : public ISystem<InputContext> {
+class RenderSystem : public ISystem<RenderContext, InputContext> {
 public:
-    void init(EntityManager& em, InputContext& ic) override;
-    void update(EntityManager& em, InputContext& ic) override;
-    void shutdown(EntityManager& em, InputContext& ic) override;
-
-    void set_environment(AssetID hdr_env);
+    void init(EntityManager& em, RenderContext& rc, InputContext& ic) override;
+    void update(EntityManager& em, RenderContext& rc, InputContext& ic) override;
+    void shutdown(EntityManager& em, RenderContext& rc, InputContext& ic) override;
 
 private:
-    bool m_wiremode = false;
+    void render_scene(EntityManager& em, Camera& cam_c, RenderContext& rc);
+    void render_hitboxes(EntityManager& em, Camera& cam_c, RenderContext& rc);
+    void render_debug(EntityManager& em, Camera& cam_c, RenderContext& rc);
 
-    AssetID m_environment;
-
-    bool m_hitbox_render_enabled = false;
-    // Hitbox buffers
-    uint32_t m_h_vao = 0;
-    uint32_t m_h_vbo = 0;
-    uint32_t m_h_ebo = 0;
-
-    bool m_debug_render_enabled = false;
-    // Arrow buffers
-    uint32_t m_a_vao = 0;
-    uint32_t m_a_vbo = 0;
-
-    AssetID m_colored_line_shader_id;
-
-    void render_scene(EntityManager& em, Camera& cam_c);
-    void render_hitboxes(EntityManager& em, Camera& cam_c);
-    void render_debug(EntityManager& em, Camera& cam_c);
-
-    void create_wire_cube();
-    void destroy_wire_cube();
-    void create_arrow(EntityManager& em);
-    void destroy_arrow();
+    void create_wire_cube(RenderContext& rc);
+    void destroy_wire_cube(RenderContext& rc);
+    void create_arrow(EntityManager& em, RenderContext& rc);
+    void destroy_arrow(RenderContext& rc);
 };

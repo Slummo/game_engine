@@ -5,7 +5,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-class RigidBodySystem : public ISystem<PhysicsContext> {
+class RigidBodySystem : public ISystem<PhysicsContext, EventContext> {
 public:
-    void update(EntityManager& em, PhysicsContext& pc) override;
+    void init(EntityManager& em, PhysicsContext& pc, EventContext& ec) override;
+    void update(EntityManager& em, PhysicsContext& pc, EventContext& ec) override;
 };

@@ -43,6 +43,7 @@ bool Application::init() {
 
     // Load sounds
     AssetID jump_sound_id = am.load_asset<SoundAsset>("cartoon_jump.mp3");
+    AssetID block_collision_sound_id = am.load_asset<SoundAsset>("block_collision.mp3");
 
     // Create entities
     EntityID cube_id = em.create_entity();
@@ -59,9 +60,8 @@ bool Application::init() {
     em.add_component<Model>(cube_id, block_model_id);
     em.add_component<RigidBody>(cube_id, 10.0f);
     em.add_component<Collider>(cube_id);
-    em.add_component<Rotator>(cube_id);
-    em.add_component<SoundSource>(cube_id);
-    em.add_component<CollisionSound>(cube_id, "block_collision.mp3");
+    auto& bl_ss = em.add_component<SoundSource>(cube_id);
+    bl_ss.register_sound("Collision", block_collision_sound_id);
 
     // Floor
     auto& floor_tr = em.add_component<Transform>(plane_id, glm::vec3(0.0f, -0.25f, 0.0f));
@@ -100,7 +100,7 @@ bool Application::init() {
     em.add_component<FPController>(player_id);
     em.add_component<SoundListener>(player_id);
     auto& pl_ss = em.add_component<SoundSource>(player_id);
-    pl_ss.add_sound("Jump", jump_sound_id);
+    pl_ss.register_sound("Jump", jump_sound_id);
 
     // Light
     em.add_component<Transform>(main_light_id, glm::vec3(0.0f, 10.0f, 30.0f),
@@ -109,28 +109,30 @@ bool Application::init() {
     em.add_component<Light>(main_light_id);
 
     // Add contexts
+    cm.add_context<EventContext>();
     cm.add_context<PhysicsContext>();
     cm.add_context<CollisionContext>();
     auto& ic = cm.add_context<InputContext>();
     cm.add_context<CameraContext>(main_camera);
+    cm.add_context<RenderContext>();
 
     // Add systems
-    sm.add_system<FirstPersonControllerSystem>();
     sm.add_system<RigidBodySystem>();
     sm.add_system<CollisionDetectionSystem>();
     sm.add_system<CollisionResolutionSystem>();
+    sm.add_system<FirstPersonControllerSystem>();
+    sm.add_system<SoundSystem>();
     sm.add_system<LightSystem>();
     sm.add_system<CameraSystem>();
     sm.add_system<RotationSystem>();
     sm.add_system<RenderSystem>();
-    sm.add_system<SoundSystem>();
     sm.init_all(em, cm);
 
     // Define actions
     ic.register_action("Quit", InputType::Key, GLFW_KEY_ESCAPE);
-    ic.on_action_pressed("Quit", [this]() { window.close(); });
+    ic.on_action_pressed("Quit", [&]() { window.close(); });
     ic.register_action("ToggleCursor", InputType::Key, GLFW_KEY_C);
-    ic.on_action_pressed("ToggleCursor", [this, &ic]() {
+    ic.on_action_pressed("ToggleCursor", [&]() {
         m_cursor_enabled = !m_cursor_enabled;
         window.set_input_mode(GLFW_CURSOR, m_cursor_enabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "assets/material.h"
-#include "assets/mesh.h"
-#include "assets/model.h"
-#include "assets/shader.h"
-#include "assets/texture.h"
-#include "assets/sound.h"
+#include "assets/material_asset.h"
+#include "assets/mesh_asset.h"
+#include "assets/model_asset.h"
+#include "assets/shader_asset.h"
+#include "assets/texture_asset.h"
+#include "assets/sound_asset.h"

@@ -1,11 +1,12 @@
 #pragma once
 
 #include "core/window.h"
-#include "core/ecs.h"
+#include "managers/entity_manager.h"
 #include "managers/system_manager.h"
-#include "managers/input_manager.h"
+#include "managers/context_manager.h"
 
 #include <memory>
+#include <vector>
 
 class Application {
 public:
@@ -14,13 +15,15 @@ public:
     bool init();
     void run();
     void shutdown();
-    InputManager& get_input_manager();
+
+    InputContext& get_input_context();
 
 private:
-    Window m_window;
-    ECS m_ecs;
-    SystemManager m_sm;
-    InputManager m_im;
+    Window window;
+
+    EntityManager em;
+    SystemManager sm;
+    ContextManager cm;
 
     bool m_running;
     bool m_cursor_enabled;

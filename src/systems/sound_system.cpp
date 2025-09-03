@@ -1,16 +1,16 @@
 #include "systems/sound_system.h"
 
-void SoundSystem::update(ECS& ecs, float /*dt*/) {
-    for (auto [_e, tr, rb, sl] : ecs.entities_with<TransformComponent, RigidBodyComponent, SoundListenerComponent>()) {
+void SoundSystem::update(EntityManager& em) {
+    for (auto [_e, tr, rb, sl] : em.entities_with<Transform, RigidBody, SoundListener>()) {
         sl.set_owner_position(tr.position());
         sl.set_owner_velocity(rb.velocity);
     }
 
-    for (auto [e, tr, ss] : ecs.entities_with<TransformComponent, SoundSourceComponent>()) {
+    for (auto [e, tr, ss] : em.entities_with<Transform, SoundSource>()) {
         ss.set_owner_position(tr.position());
 
-        if (ecs.has_component<RigidBodyComponent>(e)) {
-            auto& rb = ecs.get_component<RigidBodyComponent>(e);
+        if (em.has_component<RigidBody>(e)) {
+            auto& rb = em.get_component<RigidBody>(e);
             ss.set_owner_velocity(rb.velocity);
         }
     }

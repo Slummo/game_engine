@@ -6,13 +6,13 @@
 #include <unordered_map>
 #include <cstdint>
 
-class RenderSystem : public ISystem {
+class RenderSystem : public ISystem<> {
 public:
     RenderSystem() = default;
 
-    void init(ECS& ecs) override;
-    void update(ECS&, float dt) override;
-    void shutdown(ECS& ecs) override;
+    void init(EntityManager& em) override;
+    void update(EntityManager& em) override;
+    void shutdown(EntityManager& em) override;
 
     void set_environment(AssetID hdr_env);
 
@@ -38,12 +38,12 @@ private:
 
     AssetID m_colored_line_shader_id;
 
-    void render_scene(ECS& ecs, CameraComponent& cam_c);
-    void render_hitboxes(ECS& ecs, CameraComponent& cam_c);
-    void render_debug(ECS& ecs, CameraComponent& cam_c);
+    void render_scene(EntityManager& em, Camera& cam_c);
+    void render_hitboxes(EntityManager& em, Camera& cam_c);
+    void render_debug(EntityManager& em, Camera& cam_c);
 
     void create_wire_cube();
     void destroy_wire_cube();
-    void create_arrow(ECS& ecs);
+    void create_arrow(EntityManager& em);
     void destroy_arrow();
 };

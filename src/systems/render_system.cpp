@@ -6,48 +6,48 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cstdint>
 
-void RenderSystem::init(ECS& ecs) {
+void RenderSystem::init(EntityManager& em) {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
     create_wire_cube();
-    create_arrow(ecs);
-    m_colored_line_shader_id = AssetManager::instance().load_asset<Shader>("colored_line/");
+    create_arrow(em);
+    m_colored_line_shader_id = AssetManager::instance().load_asset<ShaderAsset>("colored_line/");
 }
 
-void RenderSystem::update(ECS& ecs, float /*dt*/) {
+void RenderSystem::update(EntityManager& em) {
     glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Only get the main camera for now
-    for (auto [_e, _pl, tr, cam] : ecs.entities_with<PlayerComponent, TransformComponent, CameraComponent>()) {
-        render_scene(ecs, cam);
-        render_hitboxes(ecs, cam);
-        render_debug(ecs, cam);
+    for (auto [_e, _pl, tr, cam] : em.entities_with<Player, Transform, Camera>()) {
+        render_scene(em, cam);
+        render_hitboxes(em, cam);
+        render_debug(em, cam);
     }
 }
 
-void RenderSystem::shutdown(ECS& /*ecs*/) {
-    AssetManager::instance().get_asset<Shader>(m_colored_line_shader_id).destroy();
+void RenderSystem::shutdown(EntityManager& /*em*/) {
+    AssetManager::instance().get_asset<ShaderAsset>(m_colored_line_shader_id).destroy();
     destroy_wire_cube();
     destroy_arrow();
 }
 
-void RenderSystem::render_scene(ECS& ecs, CameraComponent& cam) {
+void RenderSystem::render_scene(EntityManager& em, Camera& cam) {
     AssetManager& am = AssetManager::instance();
 
     // Find a directional light
     // TODO update this
-    LightComponent light;
-    for (auto [_e, tr, l] : ecs.entities_with<TransformComponent, LightComponent>()) {
+    Light light;
+    for (auto [_e, tr, l] : em.entities_with<Transform, Light>()) {
         if (l.type == LightType::Directional) {
             light = l;
             break;
         }
     }
 
-    for (auto [e, tr, m] : ecs.entities_with<TransformComponent, ModelComponent>()) {
-        if (ecs.has_component<LightComponent>(e) && !m_debug_render_enabled) {
+    for (auto [e, tr, m] : em.entities_with<Transform, Model>()) {
+        if (em.has_component<Light>(e) && !m_debug_render_enabled) {
             // Render light models only if debug render is enabled
             continue;
         }
@@ -57,11 +57,11 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& cam) {
             continue;
         }
 
-        Model& model = am.get_asset<Model>(m.asset_id);
+        ModelAsset& model = am.get_asset<ModelAsset>(m.asset_id);
         for (AssetID mesh_id : model.meshes()) {
-            Mesh& mesh = am.get_asset<Mesh>(mesh_id);
+            MeshAsset& mesh = am.get_asset<MeshAsset>(mesh_id);
             Material& mat = am.get_asset<Material>(mesh.material_id());
-            const Shader& shader = mat.bound_shader();
+            const ShaderAsset& shader = mat.bound_shader();
 
             // Vertex shader
             const glm::mat4 model_mat = tr.model_matrix();
@@ -83,20 +83,20 @@ void RenderSystem::render_scene(ECS& ecs, CameraComponent& cam) {
 
             mesh.draw();
 
-            Texture::unbind();
+            TextureAsset::unbind();
         }
     }
     // TODO UI, post-processing, debug overlays
 }
 
-void RenderSystem::render_hitboxes(ECS& ecs, CameraComponent& cam) {
+void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam) {
     if (!m_hitbox_render_enabled) {
         return;
     }
 
     AssetManager& am = AssetManager::instance();
 
-    Shader& shader = am.get_asset<Shader>(m_colored_line_shader_id);
+    ShaderAsset& shader = am.get_asset<ShaderAsset>(m_colored_line_shader_id);
     if (am.last_used_shader() != m_colored_line_shader_id) {
         shader.use();
         am.set_last_used_shader(m_colored_line_shader_id);
@@ -107,7 +107,7 @@ void RenderSystem::render_hitboxes(ECS& ecs, CameraComponent& cam) {
 
     glLineWidth(2.0f);
 
-    for (auto [_e, tr, col] : ecs.entities_with<TransformComponent, ColliderComponent>()) {
+    for (auto [_e, tr, col] : em.entities_with<Transform, Collider>()) {
         // Red = physical, green = trigger
         glm::vec3 color = col.is_trigger ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
         shader.set_vec_3f("color", color);
@@ -134,14 +134,14 @@ void RenderSystem::render_hitboxes(ECS& ecs, CameraComponent& cam) {
     glLineWidth(1.0f);
 }
 
-void RenderSystem::render_debug(ECS& /*ecs*/, CameraComponent& cam) {
+void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam) {
     if (!m_debug_render_enabled) {
         return;
     }
 
     AssetManager& am = AssetManager::instance();
 
-    Shader& shader = am.get_asset<Shader>(m_colored_line_shader_id);
+    ShaderAsset& shader = am.get_asset<ShaderAsset>(m_colored_line_shader_id);
     if (am.last_used_shader() != m_colored_line_shader_id) {
         shader.use();
         am.set_last_used_shader(m_colored_line_shader_id);
@@ -229,10 +229,10 @@ void RenderSystem::destroy_wire_cube() {
     }
 }
 
-void RenderSystem::create_arrow(ECS& ecs) {
-    TransformComponent tr;
-    LightComponent light;
-    for (auto [_e, l_tr, l] : ecs.entities_with<TransformComponent, LightComponent>()) {
+void RenderSystem::create_arrow(EntityManager& em) {
+    Transform tr;
+    Light light;
+    for (auto [_e, l_tr, l] : em.entities_with<Transform, Light>()) {
         if (l.type == LightType::Directional) {
             tr = l_tr;
             light = l;

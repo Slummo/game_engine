@@ -2,7 +2,7 @@
 
 #include "systems/isystem.h"
 
-class SoundSystem : public ISystem {
+class SoundSystem : public ISystem<> {
 public:
-    void update(ECS& ecs, float dt) override;
+    void update(EntityManager& em) override;
 };

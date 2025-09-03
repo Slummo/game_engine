@@ -10,14 +10,10 @@
 #include <memory>
 #include <stdexcept>
 
-class ECS;
-
 class SystemManager {
 public:
-    SystemManager() = default;
-
     template <typename T, typename... Args>
-        requires std::is_base_of_v<ISystem, T>
+        requires std::is_base_of_v<ISystemBase, T>
     void add_system(Args&&... args) {
         std::type_index i(typeid(T));
         auto [it, added] = m_systems.try_emplace(i, std::make_unique<T>(std::forward<Args>(args)...));
@@ -27,43 +23,35 @@ public:
     }
 
     template <typename T>
-        requires std::is_base_of_v<ISystem, T>
+        requires std::is_base_of_v<ISystemBase, T>
     T& get_system() {
         std::type_index i(typeid(T));
         auto* system = static_cast<T*>(m_systems.at(i).get());
         if (!system) {
-            std::runtime_error("NULLPTR");
+            throw std::runtime_error("[SystemManager] Trying to fetch a system that wasn't added!");
         }
         return *system;
     }
 
-    void init_all(ECS& ecs) {
+    void init_all(EntityManager& em, ContextManager& cm) {
         for (auto& [i, s] : m_systems) {
-            s->init(ecs);
+            s->init(em, cm);
         }
     }
 
-    // Variable-timestep update (per-frame)
-    void update_all(ECS& ecs, float dt) {
+    void update_all(EntityManager& em, ContextManager& cm) {
         for (auto& [i, s] : m_systems) {
-            s->update(ecs, dt);
+            s->update(em, cm);
         }
     }
 
-    // Fixed-timestep update (called with fixed_dt possibly multiple times per frame)
-    void fixed_update_all(ECS& ecs, float fixed_dt) {
+    void shutdown_all(EntityManager& em, ContextManager& cm) {
         for (auto& [i, s] : m_systems) {
-            s->fixed_update(ecs, fixed_dt);
-        }
-    }
-
-    void shutdown_all(ECS& ecs) {
-        for (auto& [i, s] : m_systems) {
-            s->shutdown(ecs);
+            s->shutdown(em, cm);
         }
         m_systems.clear();
     }
 
 private:
-    std::unordered_map<std::type_index, std::unique_ptr<ISystem>> m_systems;
+    std::unordered_map<std::type_index, std::unique_ptr<ISystemBase>> m_systems;
 };

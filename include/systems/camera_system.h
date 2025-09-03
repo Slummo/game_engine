@@ -1,16 +1,9 @@
 #pragma once
 
 #include "systems/isystem.h"
+#include "contexts/camera_context.h"
 
-class CameraSystem : public ISystem {
+class CameraSystem : public ISystem<CameraContext> {
 public:
-    CameraSystem() = delete;
-    CameraSystem(CameraComponent& cam);
-
-    void update(ECS& ecs, float dt) override;
-
-    void set_main_camera(CameraComponent& cam);
-
-private:
-    CameraComponent& m_main_camera;
+    void update(EntityManager& em, CameraContext& cc) override;
 };

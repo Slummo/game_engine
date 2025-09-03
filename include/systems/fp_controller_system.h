@@ -1,14 +1,8 @@
 #pragma once
 
 #include "systems/isystem.h"
-#include "managers/input_manager.h"
 
-class FirstPersonControllerSystem : public ISystem {
+class FirstPersonControllerSystem : public ISystem<PhysicsContext, InputContext> {
 public:
-    FirstPersonControllerSystem(InputManager& in_mgr);
-
-    void update(ECS& ecs, float dt) override;
-
-private:
-    InputManager& m_in_mgr;
+    void update(EntityManager& em, PhysicsContext& pc, InputContext& ic) override;
 };

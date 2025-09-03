@@ -2,7 +2,10 @@
 
 #include "systems/isystem.h"
 
-class RotationSystem : public ISystem<PhysicsContext> {
+#include <glm/glm.hpp>
+#include <vector>
+
+class RigidBodySystem : public ISystem<PhysicsContext> {
 public:
     void update(EntityManager& em, PhysicsContext& pc) override;
 };

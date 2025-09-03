@@ -1,6 +1,6 @@
 #pragma once
 
-struct IComponent {
+class IComponent {
 public:
     virtual ~IComponent() = default;
 };

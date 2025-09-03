@@ -3,9 +3,6 @@
 #include <glm/glm.hpp>
 #include <cstdint>
 
-CameraSystem::CameraSystem(CameraComponent& cam) : m_main_camera(cam) {
-}
-
 void transform_aabb(const glm::vec3& in_min, const glm::vec3& in_max, const glm::mat4& model, glm::vec3& out_min,
                     glm::vec3& out_max) {
     glm::vec3 corners[8] = {
@@ -25,27 +22,23 @@ void transform_aabb(const glm::vec3& in_min, const glm::vec3& in_max, const glm:
     }
 }
 
-void CameraSystem::update(ECS& ecs, float /*dt*/) {
-    if (!m_main_camera.is_active) {
+void CameraSystem::update(EntityManager& em, CameraContext& cc) {
+    if (!cc.main_camera.is_active) {
         return;
     }
 
     // Compute visible flags for frustum culling
-    for (auto [_e, tr, m] : ecs.entities_with<TransformComponent, ModelComponent>()) {
+    for (auto [_e, tr, m] : em.entities_with<Transform, Model>()) {
         const AABB& aabb = m.local_aabb;
         glm::vec3 world_min;
         glm::vec3 world_max;
         transform_aabb(aabb.min, aabb.max, tr.model_matrix(), world_min, world_max);
 
-        m.visible = m_main_camera.frustum().is_AABB_visible(world_min, world_max);
+        m.visible = cc.main_camera.frustum().is_AABB_visible(world_min, world_max);
     }
 
     // Compute cameras world position
-    for (auto [_e, tr, cam] : ecs.entities_with<TransformComponent, CameraComponent>()) {
+    for (auto [_e, tr, cam] : em.entities_with<Transform, Camera>()) {
         cam.set_world_position(tr.position() + tr.rotation() * cam.offset * tr.scale());
     }
-}
-
-void CameraSystem::set_main_camera(CameraComponent& cam) {
-    m_main_camera = cam;
 }

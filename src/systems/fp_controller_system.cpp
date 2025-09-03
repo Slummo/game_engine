@@ -9,15 +9,11 @@
 #define FP_EPS 1e-6f
 #define JMSRF 0.65f  // Jumping movement speed reduction factor
 
-FirstPersonControllerSystem::FirstPersonControllerSystem(InputManager& in_mgr) : m_in_mgr(in_mgr) {
-}
-
-void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
+void FirstPersonControllerSystem::update(EntityManager& em, PhysicsContext& pc, InputContext& ic) {
     for (auto [e, tr, rb, col, pl, cam, fpc] :
-         ecs.entities_with<TransformComponent, RigidBodyComponent, ColliderComponent, PlayerComponent, CameraComponent,
-                           FPControllerComponent>()) {
+         em.entities_with<Transform, RigidBody, Collider, Player, Camera, FPController>()) {
         // Mouse look
-        glm::vec2 mouse_delta = m_in_mgr.mouse_delta();
+        glm::vec2 mouse_delta = ic.mouse_delta();
         cam.update_yaw(mouse_delta.x * fpc.look_speed);     // + for right
         cam.update_pitch(-mouse_delta.y * fpc.look_speed);  // - for down
 
@@ -33,16 +29,16 @@ void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
         glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
 
         glm::vec3 move_dir(0.0f);
-        if (m_in_mgr.is_key_down(GLFW_KEY_W)) {
+        if (ic.is_key_down(GLFW_KEY_W)) {
             move_dir += forward;
         }
-        if (m_in_mgr.is_key_down(GLFW_KEY_S)) {
+        if (ic.is_key_down(GLFW_KEY_S)) {
             move_dir -= forward;
         }
-        if (m_in_mgr.is_key_down(GLFW_KEY_D)) {
+        if (ic.is_key_down(GLFW_KEY_D)) {
             move_dir += right;
         }
-        if (m_in_mgr.is_key_down(GLFW_KEY_A)) {
+        if (ic.is_key_down(GLFW_KEY_A)) {
             move_dir -= right;
         }
 
@@ -71,7 +67,7 @@ void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
             rb.apply_impulse(dv * rb.mass);
         } else {
             // No movement input so brake
-            float max_dv = ground_brake_accel * dt;
+            float max_dv = ground_brake_accel * pc.dt;
 
             if (speed <= stop_speed_threshold) {
                 if (speed > 0.0f) {
@@ -103,8 +99,8 @@ void FirstPersonControllerSystem::update(ECS& ecs, float dt) {
             fpc.is_grounded = false;  // now airborne
 
             // Sound
-            if (ecs.has_component<SoundSourceComponent>(e)) {
-                auto& ss = ecs.get_component<SoundSourceComponent>(e);
+            if (em.has_component<SoundSource>(e)) {
+                auto& ss = em.get_component<SoundSource>(e);
                 ss.set_sound("Jump");
                 ss.play();
             }

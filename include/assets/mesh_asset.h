@@ -7,7 +7,7 @@
 #include <string>
 #include <memory>
 
-enum VertexFormat { POS_TEX, POS_NOR_TEX };
+enum class VertexFormat { POS_TEX, POS_NOR_TEX };
 
 struct Vertex_PT {
     glm::vec3 pos3;

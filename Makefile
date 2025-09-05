@@ -1,7 +1,9 @@
 # Tools
 CXX		:= g++
 CC		:= gcc
-MKDIR		:= mkdir -p
+MKDIR	:= mkdir -p
+
+LIBS 	:= glfw3 opengl assimp openal sndfile freetype2
 
 # Project layout
 SRC_DIR		:= src
@@ -13,18 +15,18 @@ BIN_DIR		:= $(BUILD_DIR)/bin
 TARGET		:= $(BIN_DIR)/main
 
 # Compilation flags
-COMMON_FLAGS		:= -MMD -MP -Wall -Wextra -Wunused-macros -Wunused-parameter -Wunused-but-set-parameter
+COMMON_FLAGS	:= -MMD -MP -Wall -Wextra -Wunused-macros -Wunused-parameter -Wunused-but-set-parameter
 CXXSTD			:= -std=c++20
 CSTD			:= -std=c11
 CXXFLAGS		:= $(CXXSTD) $(COMMON_FLAGS) -Wpedantic
 CFLAGS			:= $(CSTD) $(COMMON_FLAGS)
 
 # Preprocessor flags
-CPPFLAGS		:= -I$(INCLUDE_DIR) -I$(DEPS_DIR)
+CPPFLAGS		:= -I$(INCLUDE_DIR) -I$(DEPS_DIR) $(shell pkg-config --cflags $(LIBS))
 
 # Linker flags
 LDFLAGS			:= 							# -L...
-LDLIBS			:= -lglfw -ldl -lGL -lassimp -lopenal -lsndfile
+LDLIBS			:= -ldl $(shell pkg-config --libs $(LIBS))
 
 # Profiles flags
 DEBUG_FLAGS		:= -g -O0 -fno-omit-frame-pointer -DDEBUG

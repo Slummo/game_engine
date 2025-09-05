@@ -9,10 +9,9 @@
 #include <unordered_map>
 #include <memory>
 #include <variant>
-#include <assimp/scene.h>
 
 struct TexData {
-    TextureType type;
+    MaterialTextureType type;
     std::string path;
     bool is_path_absolute = false;
 };
@@ -26,8 +25,8 @@ public:
              bool double_sided = false);
 
     // For material with a single texture
-    Material(std::string name, TextureType texture_type, std::string texture_name, const std::string& shader_name,
-             bool double_sided = false);
+    Material(std::string name, MaterialTextureType texture_type, std::string texture_name,
+             const std::string& shader_name, bool double_sided = false);
 
     // Loads texture assets and the shader asset
     Material(const aiMaterial* ai_mat, const std::string& model_path, const std::string& shader_name);
@@ -41,7 +40,7 @@ public:
 
     const std::string& name() const;
 
-    bool get_texture(TextureType type, AssetID& out) const;
+    bool get_texture(MaterialTextureType type, AssetID& out) const;
 
     template <typename T>
     bool get_param(const std::string& name, T& out) const {
@@ -77,7 +76,7 @@ protected:
 
 private:
     std::string m_name;
-    std::unordered_map<TextureType, AssetID> m_textures;
+    std::unordered_map<MaterialTextureType, AssetID> m_textures;
     std::unordered_map<std::string, ParamValue> m_params;
     AssetID m_shader_id;
     bool m_double_sided;
@@ -86,5 +85,5 @@ private:
 
     static std::string load_name(const aiMaterial* ai_mat);
     static std::vector<TexData> load_textures(const aiMaterial* ai_mat, const std::string& model_path,
-                                              std::vector<TextureType> texture_types);
+                                              std::vector<MaterialTextureType> texture_types);
 };

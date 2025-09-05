@@ -11,8 +11,6 @@
 
 class ShaderAsset : public IAsset {
 public:
-    ShaderAsset() = default;
-
     static std::shared_ptr<ShaderAsset> create_fallback();
 
     // This function assumes the provided path contains all the

@@ -16,22 +16,23 @@ Material::Material(std::string name, std::vector<TexData> textures_data, const s
     m_shader_id = am.load_asset<ShaderAsset>(shader_name + "/");
 }
 
-Material::Material(std::string name, TextureType texture_type, std::string texture_name, const std::string& shader_name,
-                   bool double_sided)
+Material::Material(std::string name, MaterialTextureType texture_type, std::string texture_name,
+                   const std::string& shader_name, bool double_sided)
     : Material(name, {{texture_type, std::move(texture_name)}}, shader_name, double_sided) {
 }
 
 Material::Material(const aiMaterial* ai_mat, const std::string& model_path, const std::string& shader_name)
     : Material(Material::load_name(ai_mat),
-               Material::load_textures(ai_mat, model_path,
-                                       {TextureType::Diffuse, TextureType::Specular, TextureType::Ambient}),
+               Material::load_textures(
+                   ai_mat, model_path,
+                   {MaterialTextureType::Diffuse, MaterialTextureType::Specular, MaterialTextureType::Ambient}),
                shader_name) {
 }
 
 Material::Material(std::string name) : m_name(std::move(name)), m_double_sided(false) {
     AssetManager& am = AssetManager::instance();
     AssetID tex_id = am.get_fallback_id<TextureAsset>();
-    m_textures[TextureType::Diffuse] = tex_id;
+    m_textures[MaterialTextureType::Diffuse] = tex_id;
     m_shader_id = am.get_fallback_id<ShaderAsset>();
 }
 
@@ -51,19 +52,19 @@ void Material::set_uniforms() {
     shader.set_bool("mat.has_ambient_map", false);
 
     AssetID tex_id;
-    if (get_texture(TextureType::Diffuse, tex_id)) {  // diffuse texture
+    if (get_texture(MaterialTextureType::Diffuse, tex_id)) {  // diffuse texture
         TextureAsset& diffuse_tex = am.get_asset<TextureAsset>(tex_id);
         diffuse_tex.bind(0);
         shader.set_int("mat.diffuse_map", 0);
         shader.set_bool("mat.has_diffuse_map", true);
     }
-    if (get_texture(TextureType::Specular, tex_id)) {  // specular texture
+    if (get_texture(MaterialTextureType::Specular, tex_id)) {  // specular texture
         TextureAsset& specular_tex = am.get_asset<TextureAsset>(tex_id);
         specular_tex.bind(1);
         shader.set_int("mat.specular_map", 1);
         shader.set_bool("mat.has_specular_map", true);
     }
-    if (get_texture(TextureType::Ambient, tex_id)) {  // ambient texture
+    if (get_texture(MaterialTextureType::Ambient, tex_id)) {  // ambient texture
         TextureAsset& ambient_tex = am.get_asset<TextureAsset>(tex_id);
         ambient_tex.bind(2);
         shader.set_int("mat.ambient_map", 2);
@@ -78,7 +79,7 @@ const std::string& Material::name() const {
     return m_name;
 }
 
-bool Material::get_texture(TextureType type, AssetID& out) const {
+bool Material::get_texture(MaterialTextureType type, AssetID& out) const {
     auto it = m_textures.find(type);
     if (it == m_textures.end()) {
         return false;
@@ -111,10 +112,10 @@ std::string Material::load_name(const aiMaterial* ai_mat) {
 }
 
 std::vector<TexData> Material::load_textures(const aiMaterial* ai_mat, const std::string& model_path,
-                                             std::vector<TextureType> texture_types) {
+                                             std::vector<MaterialTextureType> texture_types) {
     std::vector<TexData> textures_data;
 
-    for (TextureType type : texture_types) {
+    for (MaterialTextureType type : texture_types) {
         aiTextureType ai_type = static_cast<aiTextureType>(type);
 
         for (uint32_t i = 0; i < ai_mat->GetTextureCount(ai_type); i++) {

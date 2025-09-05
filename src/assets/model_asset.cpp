@@ -2,10 +2,8 @@
 #include "core/log.h"
 #include "managers/asset_manager.h"
 
-#include <iostream>
 #include <cstring>
 #include <limits>
-#include <cstdint>
 #include <filesystem>
 
 #include <assimp/Importer.hpp>

@@ -6,3 +6,4 @@
 #include "assets/shader_asset.h"
 #include "assets/texture_asset.h"
 #include "assets/sound_asset.h"
+#include "assets/font_asset.h"

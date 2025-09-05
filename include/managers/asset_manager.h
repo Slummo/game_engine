@@ -14,6 +14,9 @@
 #include <iostream>
 #include <sstream>
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
 template <typename T, typename... Args>
 concept is_loadable = requires(const std::string& path, Args&&... args) {
     { T::load_from_file(path, args...) } -> std::convertible_to<std::optional<std::shared_ptr<T>>>;
@@ -116,6 +119,10 @@ public:
         return m_last_used_shader;
     }
 
+    const FT_Library& ft_lib() const {
+        return m_ft;
+    }
+
     void print_asset(AssetID asset_id) {
         auto it = m_assets.find(asset_id);
         if (it == m_assets.end()) {
@@ -148,8 +155,20 @@ private:
     std::unordered_map<std::string, AssetID> m_loaded_assets;
     std::unordered_map<std::type_index, AssetID> m_fallbacks;
     AssetID m_last_used_shader;
+    FT_Library m_ft;
 
-    AssetManager() = default;
+    AssetManager() {
+        if (FT_Init_FreeType(&m_ft)) {
+            throw std::runtime_error("[AssetManager] Failed to init FreeType!");
+        }
+    }
+
+    ~AssetManager() {
+        if (m_ft) {
+            FT_Done_FreeType(m_ft);
+            m_ft = nullptr;
+        }
+    }
 
     template <typename T>
     AssetID add_fallback() {

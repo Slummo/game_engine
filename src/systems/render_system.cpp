@@ -1,18 +1,20 @@
 #include "systems/render_system.h"
 #include "managers/asset_manager.h"
 
+#include <format>
+
 #include <glad/glad.h>
-#include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
-#include <cstdint>
+#include <glm/gtc/type_ptr.hpp>
 #include <GLFW/glfw3.h>
 
-void RenderSystem::init(EntityManager& em, RenderContext& rc, InputContext& ic) {
+void RenderSystem::init(EntityManager& em, RenderContext& rc, CameraContext& /*cc*/, InputContext& ic) {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
     create_wire_cube(rc);
     create_arrow(em, rc);
+    create_text(rc);
 
     ic.register_action("ToggleWiremode", InputType::Key, GLFW_KEY_M, GLFW_MOD_CONTROL);
     ic.on_action_pressed("ToggleWiremode", [&]() {
@@ -25,22 +27,25 @@ void RenderSystem::init(EntityManager& em, RenderContext& rc, InputContext& ic) 
     ic.on_action_pressed("ToggleDebug", [&]() { rc.debug_render_enabled = !rc.debug_render_enabled; });
 }
 
-void RenderSystem::update(EntityManager& em, RenderContext& rc, InputContext& /*ic*/) {
+void RenderSystem::update(EntityManager& em, RenderContext& rc, CameraContext& cc, InputContext& /*ic*/) {
     glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Only get the main camera for now
-    for (auto [_e, _pl, tr, cam] : em.entities_with<Player, Transform, Camera>()) {
-        render_scene(em, cam, rc);
-        render_hitboxes(em, cam, rc);
-        render_debug(em, cam, rc);
-    }
+    Camera& cam = cc.main_camera;
+    render_scene(em, cam, rc);
+    render_hitboxes(em, cam, rc);
+    render_debug(em, cam, rc);
+
+    std::string fps_string(std::format("FPS: {}", rc.fps));
+    render_text(rc, fps_string, 10.0f, 560.0f, 0.5f, glm::vec3(1.0f));
 }
 
-void RenderSystem::shutdown(EntityManager& /*em*/, RenderContext& rc, InputContext& /*ic*/) {
+void RenderSystem::shutdown(EntityManager& /*em*/, RenderContext& rc, CameraContext& /*cc*/, InputContext& /*ic*/) {
     AssetManager::instance().get_asset<ShaderAsset>(rc.colored_line_shader_id).destroy();
     destroy_wire_cube(rc);
     destroy_arrow(rc);
+    destroy_text(rc);
 }
 
 void RenderSystem::render_scene(EntityManager& em, Camera& cam, RenderContext& rc) {
@@ -96,7 +101,6 @@ void RenderSystem::render_scene(EntityManager& em, Camera& cam, RenderContext& r
             TextureAsset::unbind();
         }
     }
-    // TODO UI, post-processing, debug overlays
 }
 
 void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam, RenderContext& rc) {
@@ -116,6 +120,9 @@ void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam, RenderContext
     shader.set_matrix_4f("View", cam.view_matrix());
 
     glLineWidth(2.0f);
+    glDisable(GL_DEPTH_TEST);
+
+    glBindVertexArray(rc.h_vao);
 
     for (auto [_e, tr, col] : em.entities_with<Transform, Collider>()) {
         // Red = physical, green = trigger
@@ -135,13 +142,12 @@ void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam, RenderContext
 
         shader.set_matrix_4f("Model", model);
 
-        glDisable(GL_DEPTH_TEST);
-        glBindVertexArray(rc.h_vao);
         glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr);
-        glEnable(GL_DEPTH_TEST);
     }
 
     glLineWidth(1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glBindVertexArray(0);
 }
 
 void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam, RenderContext& rc) {
@@ -167,6 +173,71 @@ void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam, RenderContex
     glBindVertexArray(rc.a_vao);
     glDrawArrays(GL_LINES, 0, 2);
     glLineWidth(1.0f);
+    glBindVertexArray(0);
+}
+
+void RenderSystem::render_text(RenderContext& rc, const std::string& text, float x, float y, float scale,
+                               const glm::vec3& color) {
+    AssetManager& am = AssetManager::instance();
+
+    ShaderAsset& shader = am.get_asset<ShaderAsset>(rc.text_shader_id);
+    if (am.last_used_shader() != rc.text_shader_id) {
+        shader.use();
+        am.set_last_used_shader(rc.text_shader_id);
+    }
+
+    glm::mat4 proj = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
+    shader.set_matrix_4f("Projection", glm::value_ptr(proj));
+    shader.set_vec_3f("color", color);
+
+    FontAsset& font = am.get_asset<FontAsset>(rc.font_id);
+    TextureAsset& font_tex = am.get_asset<TextureAsset>(font.texture_id());
+    font_tex.bind(0);
+    shader.set_int("font_texture", 0);
+
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glBindVertexArray(rc.t_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rc.t_vbo);
+
+    for (uint8_t c : text) {
+        auto it = font.chars().find(c);
+        if (it == font.chars().end()) {
+            continue;
+        }
+
+        const CharacterGlyph& g = it->second;
+
+        float xpos = x + g.bearing.x * scale;
+        float ypos = y - (g.size.y - g.bearing.y) * scale;
+        float w = g.size.x * scale;
+        float h = g.size.y * scale;
+
+        float vertices[6][4] = {
+            // First triangle
+            {xpos, ypos + h, g.uv_0.x, g.uv_1.y},  // bottom-left
+            {xpos, ypos, g.uv_0.x, g.uv_0.y},      // top-left
+            {xpos + w, ypos, g.uv_1.x, g.uv_0.y},  // top-right
+
+            // Second triangle
+            {xpos, ypos + h, g.uv_0.x, g.uv_1.y},     // bottom-left
+            {xpos + w, ypos, g.uv_1.x, g.uv_0.y},     // top-right
+            {xpos + w, ypos + h, g.uv_1.x, g.uv_1.y}  // bottom-right
+        };
+
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        x += g.advance * scale;  // move cursor
+    }
+
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    TextureAsset::unbind();
 }
 
 void RenderSystem::create_wire_cube(RenderContext& rc) {
@@ -247,6 +318,8 @@ void RenderSystem::create_arrow(EntityManager& em, RenderContext& rc) {
 
     glEnableVertexAttribArray(0);  // position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+
+    glBindVertexArray(0);
 }
 
 void RenderSystem::destroy_arrow(RenderContext& rc) {
@@ -257,5 +330,32 @@ void RenderSystem::destroy_arrow(RenderContext& rc) {
     if (rc.a_vao) {
         glDeleteVertexArrays(1, &rc.a_vao);
         rc.a_vao = 0;
+    }
+}
+
+void RenderSystem::create_text(RenderContext& rc) {
+    glGenVertexArrays(1, &rc.t_vao);
+    glGenBuffers(1, &rc.t_vbo);
+
+    glBindVertexArray(rc.t_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rc.t_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(0);  // position
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)0);
+    glEnableVertexAttribArray(1);  // uv
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
+
+    glBindVertexArray(0);
+}
+
+void RenderSystem::destroy_text(RenderContext& rc) {
+    if (rc.t_vbo) {
+        glDeleteBuffers(1, &rc.t_vbo);
+        rc.t_vbo = 0;
+    }
+    if (rc.t_vao) {
+        glDeleteVertexArrays(1, &rc.t_vao);
+        rc.t_vao = 0;
     }
 }

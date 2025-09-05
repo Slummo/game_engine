@@ -21,10 +21,10 @@ bool Application::init() {
     AssetManager& am = AssetManager::instance();
 
     // Create materials
-    AssetID block_mat_id = am.add_asset<Material>("block_mat", TextureType::Diffuse, "wood_box.jpg", "full");
-    AssetID floor_mat_id = am.add_asset<Material>("floor_mat", TextureType::Diffuse, "floor2.jpg", "full");
+    AssetID block_mat_id = am.add_asset<Material>("block_mat", MaterialTextureType::Diffuse, "wood_box.jpg", "full");
+    AssetID floor_mat_id = am.add_asset<Material>("floor_mat", MaterialTextureType::Diffuse, "floor2.jpg", "full");
     AssetID lightbulb_mat_id =
-        am.add_asset<Material>("lightbulb_mat", TextureType::Diffuse, "lightbulb.jpeg", "lightbulb");
+        am.add_asset<Material>("lightbulb_mat", MaterialTextureType::Diffuse, "lightbulb.jpeg", "lightbulb");
 
     // Create meshes with materials
     AssetID cube_pnt_mesh_id = MeshAsset::create_cube_PNT(block_mat_id);
@@ -159,6 +159,7 @@ void Application::run() {
 
     // Contexts
     auto& pc = cm.get_context<PhysicsContext>();
+    auto& rc = cm.get_context<RenderContext>();
     auto& ic = cm.get_context<InputContext>();
 
     while (!window.should_close()) {
@@ -172,10 +173,8 @@ void Application::run() {
         // FPS calculation
         frames++;
         fps_time += dt;
-        if (fps_time >= 0.5) {  // every 0.5 second
-            float fps = frames / fps_time;
-            fps = std::round(fps * 10.0f) / 10.0f;  // round to first decimal digit
-            LOG("FPS: " << fps);
+        if (fps_time >= 0.5) {                                       // every 0.5 second
+            rc.fps = std::round(frames / fps_time * 10.0f) / 10.0f;  // round to first decimal digit
             frames = 0;
             fps_time = 0.0;
         }
@@ -184,6 +183,7 @@ void Application::run() {
         ic.begin_frame();
         sm.update_all(em, cm);
         ic.end_frame();
+
         window.swap_buffers();
     }
 }

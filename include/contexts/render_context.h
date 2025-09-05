@@ -6,7 +6,10 @@
 
 struct RenderContext : public IContext {
     RenderContext() {
-        colored_line_shader_id = AssetManager::instance().load_asset<ShaderAsset>("colored_line/");
+        AssetManager& am = AssetManager::instance();
+        colored_line_shader_id = am.load_asset<ShaderAsset>("colored_line/");
+        text_shader_id = am.load_asset<ShaderAsset>("text/");
+        font_id = am.load_asset<FontAsset>("arial/ARIAL.TTF", "arial");
     }
 
     bool wiremode = false;
@@ -24,5 +27,14 @@ struct RenderContext : public IContext {
     uint32_t a_vao = 0;
     uint32_t a_vbo = 0;
 
+    // Text buffers
+    uint32_t t_vao = 0;
+    uint32_t t_vbo = 0;
+
     AssetID colored_line_shader_id;
+    AssetID text_shader_id;
+
+    AssetID font_id;
+
+    float fps = 0;
 };

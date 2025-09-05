@@ -14,7 +14,7 @@
 using Key = int32_t;
 using MouseButton = int32_t;
 
-enum struct InputType { Key, MouseButton };
+enum class InputType { Key, MouseButton };
 
 // What input triggers an Action
 struct Binding {

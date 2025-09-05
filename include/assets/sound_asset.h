@@ -9,8 +9,6 @@
 
 class SoundAsset : public IAsset {
 public:
-    SoundAsset() = default;
-
     static std::shared_ptr<SoundAsset> create_fallback();
 
     // With sndfile

@@ -8,7 +8,7 @@ std::optional<std::shared_ptr<SoundAsset>> SoundAsset::load_from_file(const std:
     SF_INFO info;
     SNDFILE* file = sf_open(path.c_str(), SFM_READ, &info);
     if (!file) {
-        ERR("[SoundAsset] Failed to load sound " << sf_strerror(NULL));
+        ERR("[SoundAsset] Failed to load sound " << sf_strerror(nullptr));
         return std::nullopt;
     }
 
@@ -37,10 +37,6 @@ std::shared_ptr<SoundAsset> SoundAsset::create_fallback() {
     return std::make_shared<SoundAsset>();
 }
 
-SoundAsset::~SoundAsset() {
-    alDeleteBuffers(1, &m_buffer_id);
-}
-
 uint32_t SoundAsset::buffer_id() const {
     return m_buffer_id;
 }
@@ -51,6 +47,13 @@ int32_t SoundAsset::channels() const {
 
 int32_t SoundAsset::samplerate() const {
     return m_samplerate;
+}
+
+SoundAsset::~SoundAsset() {
+    if (m_buffer_id) {
+        alDeleteBuffers(1, &m_buffer_id);
+        m_buffer_id = 0;
+    }
 }
 
 std::ostream& SoundAsset::print(std::ostream& os) const {

@@ -47,9 +47,9 @@ bool Window::create(const std::string& title, int32_t width, int32_t height) {
     glfwSetCharCallback(m_handle, char_callback);
 
     // OpenAL
-    ALCdevice* device = alcOpenDevice(NULL);
+    ALCdevice* device = alcOpenDevice(nullptr);
     if (device) {
-        ALCcontext* context = alcCreateContext(device, NULL);
+        ALCcontext* context = alcCreateContext(device, nullptr);
         alcMakeContextCurrent(context);
     }
 
@@ -119,7 +119,7 @@ void Window::destroy() {
     // OpenAL
     ALCcontext* context = alcGetCurrentContext();
     ALCdevice* device = alcGetContextsDevice(context);
-    alcMakeContextCurrent(NULL);
+    alcMakeContextCurrent(nullptr);
     alcDestroyContext(context);
     alcCloseDevice(device);
 }

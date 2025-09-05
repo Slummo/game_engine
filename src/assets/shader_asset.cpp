@@ -53,7 +53,7 @@ std::optional<std::shared_ptr<ShaderAsset>> ShaderAsset::load_from_file(const st
 
     // Vertex
     vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &v_code_c, NULL);
+    glShaderSource(vertex, 1, &v_code_c, nullptr);
     glCompileShader(vertex);
     if (!ShaderAsset::check_compile_errors(vertex, "Vertex shader")) {
         return std::nullopt;
@@ -61,7 +61,7 @@ std::optional<std::shared_ptr<ShaderAsset>> ShaderAsset::load_from_file(const st
 
     // Fragment
     fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &f_code_c, NULL);
+    glShaderSource(fragment, 1, &f_code_c, nullptr);
     glCompileShader(fragment);
     if (!ShaderAsset::check_compile_errors(fragment, "Fragment shader")) {
         return std::nullopt;
@@ -74,7 +74,7 @@ std::optional<std::shared_ptr<ShaderAsset>> ShaderAsset::load_from_file(const st
     glAttachShader(shader->m_program_id, fragment);
     glLinkProgram(shader->m_program_id);
     if (!ShaderAsset::check_compile_errors(shader->m_program_id, "Program")) {
-        shader->destroy();
+        shader->~ShaderAsset();
         return std::nullopt;
     }
 
@@ -162,10 +162,11 @@ void ShaderAsset::set_matrix_4f(const std::string& name, const glm::mat4& mat) c
     set_matrix_4f(name, glm::value_ptr(mat));
 }
 
-void ShaderAsset::destroy() {
-    glDeleteProgram(m_program_id);
-    m_program_id = 0;
-    m_uniform_locations.clear();
+ShaderAsset::~ShaderAsset() {
+    if (m_program_id) {
+        glDeleteProgram(m_program_id);
+        m_program_id = 0;
+    }
 }
 
 std::ostream& ShaderAsset::print(std::ostream& os) const {
@@ -178,14 +179,14 @@ bool ShaderAsset::check_compile_errors(uint32_t shader, const std::string& type)
     if (type != "Program") {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
         if (!success) {
-            glGetShaderInfoLog(shader, 1024, NULL, info_log);
+            glGetShaderInfoLog(shader, 1024, nullptr, info_log);
             ERR("[ShaderAsset] compilation error for " << type << ":\n\t" << info_log)
             return false;
         }
     } else {
         glGetProgramiv(shader, GL_LINK_STATUS, &success);
         if (!success) {
-            glGetProgramInfoLog(shader, 1024, NULL, info_log);
+            glGetProgramInfoLog(shader, 1024, nullptr, info_log);
             ERR("[ShaderAsset] linking error for " << type << ":\n\t" << info_log);
             return false;
         }

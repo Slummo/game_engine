@@ -1,6 +1,9 @@
 #pragma once
 
 #include "assets/iasset.h"
+#include "components/transform.h"
+#include "components/camera.h"
+#include "components/light.h"
 
 #include <vector>
 #include <glm/glm.hpp>
@@ -25,6 +28,8 @@ public:
     static const char* base_path() {
         return "assets/models/";
     }
+
+    void draw(Transform& tr, Camera& cam, Light& light);
 
     const std::string& name() const;
     const std::string& directory() const;

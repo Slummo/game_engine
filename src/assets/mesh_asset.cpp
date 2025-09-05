@@ -166,7 +166,7 @@ void MeshAsset::draw() const {
     glBindVertexArray(0);
 }
 
-void MeshAsset::destroy() {
+MeshAsset::~MeshAsset() {
     if (m_ebo) {
         glDeleteBuffers(1, &m_ebo);
         m_ebo = 0;
@@ -179,10 +179,6 @@ void MeshAsset::destroy() {
         glDeleteVertexArrays(1, &m_vao);
         m_vao = 0;
     }
-}
-
-MeshAsset::~MeshAsset() {
-    destroy();
 }
 
 int32_t MeshAsset::index_count() const {
@@ -244,7 +240,8 @@ void MeshAsset::upload(const void* vertices, const void* indices) {
     }
 
     if (m_vao || m_vbo || m_ebo) {
-        destroy();
+        ERR("[MeshAsset] Trying to call upload() on an already created mesh");
+        return;
     }
 
     // Create buffers
@@ -287,7 +284,7 @@ void MeshAsset::upload(const void* vertices, const void* indices) {
             break;
         }
         default: {
-            throw std::runtime_error("Unknown vertex format");
+            throw std::runtime_error("[MeshAsset] Unknown vertex format");
         }
     }
 

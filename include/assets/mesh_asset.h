@@ -68,8 +68,6 @@ public:
 
     void draw() const;
 
-    void destroy();
-
     ~MeshAsset();
 
     int32_t index_count() const;

@@ -105,6 +105,38 @@ std::optional<std::shared_ptr<ModelAsset>> ModelAsset::load_from_file(const std:
     return model;
 }
 
+void ModelAsset::draw(Transform& tr, Camera& cam, Light& light) {
+    AssetManager& am = AssetManager::instance();
+
+    for (AssetID mesh_id : m_meshes) {
+        MeshAsset& mesh = am.get_asset<MeshAsset>(mesh_id);
+        Material& mat = am.get_asset<Material>(mesh.material_id());
+        const ShaderAsset& shader = mat.bound_shader();
+
+        // Vertex shader
+        const glm::mat4 model_mat = tr.model_matrix();
+        glm::mat3 normal_mat = glm::transpose(glm::inverse(glm::mat3(model_mat)));
+        shader.set_matrix_4f("Projection", cam.proj_matrix());
+        shader.set_matrix_4f("View", cam.view_matrix());
+        shader.set_matrix_4f("Model", model_mat);
+        shader.set_matrix_3f("Normal", normal_mat);
+
+        // Fragment shader
+        mat.set_uniforms();
+
+        shader.set_vec_3f("light.direction", light.direction);
+        shader.set_vec_3f("light.color", light.color);
+        shader.set_float("light.intensity", light.intensity);
+        shader.set_bool("light.is_directional", true);
+
+        shader.set_vec_3f("camera_world_pos", cam.world_position());
+
+        mesh.draw();
+
+        TextureAsset::unbind();
+    }
+}
+
 const std::string& ModelAsset::directory() const {
     return m_directory;
 }

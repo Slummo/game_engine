@@ -84,8 +84,6 @@ public:
     }
     const std::string& full_path();
 
-    ~TextureAsset();
-
     void bind(uint32_t slot = 0) const;
     static void unbind(uint32_t slot = 0);
 
@@ -95,6 +93,8 @@ public:
     int32_t height() const;
     int32_t channels() const;
     const TextureInfo& info() const;
+
+    ~TextureAsset();
 
 protected:
     std::ostream& print(std::ostream& os) const override;

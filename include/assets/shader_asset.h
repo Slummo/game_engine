@@ -33,7 +33,7 @@ public:
     void set_matrix_4f(const std::string& name, const GLfloat* ptr) const;
     void set_matrix_4f(const std::string& name, const glm::mat4& mat) const;
 
-    void destroy();
+    ~ShaderAsset();
 
 protected:
     std::ostream& print(std::ostream& os) const override;

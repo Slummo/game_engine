@@ -18,11 +18,11 @@ public:
     }
     const std::string& full_path();
 
-    ~SoundAsset();
-
     uint32_t buffer_id() const;
     int32_t channels() const;
     int32_t samplerate() const;
+
+    ~SoundAsset();
 
 protected:
     std::ostream& print(std::ostream& os) const override;

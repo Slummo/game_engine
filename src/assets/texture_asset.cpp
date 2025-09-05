@@ -270,13 +270,6 @@ std::shared_ptr<TextureAsset> TextureAsset::create_fallback() {
     return tex;
 }
 
-TextureAsset::~TextureAsset() {
-    if (m_id != 0) {
-        glDeleteTextures(1, &m_id);
-        m_id = 0;
-    }
-}
-
 void TextureAsset::bind(uint32_t slot) const {
     if (m_id == 0) {
         return;
@@ -314,6 +307,13 @@ int32_t TextureAsset::channels() const {
 
 const TextureInfo& TextureAsset::info() const {
     return m_info;
+}
+
+TextureAsset::~TextureAsset() {
+    if (m_id != 0) {
+        glDeleteTextures(1, &m_id);
+        m_id = 0;
+    }
 }
 
 std::ostream& TextureAsset::print(std::ostream& os) const {

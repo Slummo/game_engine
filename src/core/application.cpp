@@ -114,7 +114,7 @@ bool Application::init() {
     cm.add_context<CollisionContext>();
     auto& ic = cm.add_context<InputContext>();
     cm.add_context<CameraContext>(main_camera);
-    cm.add_context<RenderContext>();
+    cm.add_context<RenderContext>(em);
 
     // Add systems
     sm.add_system<RigidBodySystem>();

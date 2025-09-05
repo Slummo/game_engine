@@ -17,10 +17,7 @@ void RenderSystem::init(EntityManager& em, RenderContext& rc, CameraContext& /*c
     create_text(rc);
 
     ic.register_action("ToggleWiremode", InputType::Key, GLFW_KEY_M, GLFW_MOD_CONTROL);
-    ic.on_action_pressed("ToggleWiremode", [&]() {
-        rc.wiremode = !rc.wiremode;
-        glPolygonMode(GL_FRONT_AND_BACK, rc.wiremode ? GL_LINE : GL_FILL);
-    });
+    ic.on_action_pressed("ToggleWiremode", [&]() { rc.wiremode = !rc.wiremode; });
     ic.register_action("ToggleHitboxes", InputType::Key, GLFW_KEY_H, GLFW_MOD_CONTROL);
     ic.on_action_pressed("ToggleHitboxes", [&]() { rc.hitbox_render_enabled = !rc.hitbox_render_enabled; });
     ic.register_action("ToggleDebug", InputType::Key, GLFW_KEY_F, GLFW_MOD_CONTROL);
@@ -31,11 +28,16 @@ void RenderSystem::update(EntityManager& em, RenderContext& rc, CameraContext& c
     glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // Don't use wiremode for text
+    glPolygonMode(GL_FRONT_AND_BACK, rc.wiremode ? GL_LINE : GL_FILL);
+
     // Only get the main camera for now
     Camera& cam = cc.main_camera;
     render_scene(em, cam, rc);
     render_hitboxes(em, cam, rc);
     render_debug(em, cam, rc);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     std::string fps_string(std::format("FPS: {}", rc.fps));
     render_text(rc, fps_string, 10.0f, 560.0f, 0.5f, glm::vec3(1.0f));

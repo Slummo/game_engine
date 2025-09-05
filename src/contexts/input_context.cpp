@@ -23,6 +23,16 @@ InputContext::InputContext() {
     m_action_pressed_cache.reserve(64);
 }
 
+void InputContext::link_callbacks(Window& win) {
+    win.set_key_callback(
+        [&](int32_t key, int32_t scancode, int32_t action, int32_t mods) { on_key(key, scancode, action, mods); });
+    win.set_mouse_button_callback(
+        [&](int32_t button, int32_t action, int32_t mods) { on_mouse_button(button, action, mods); });
+    win.set_cursor_pos_callback([&](double xpos, double ypos) { on_cursor_pos(xpos, ypos); });
+    win.set_scroll_callback([&](double xoffset, double yoffset) { on_scroll(xoffset, yoffset); });
+    win.set_char_callback([&](uint32_t codepoint) { on_char(codepoint); });
+}
+
 void InputContext::on_key(int32_t key, int32_t /*scancode*/, int32_t action, int32_t mods) {
     if (key < 0 || key >= static_cast<int32_t>(MAX_KEYS)) {
         return;

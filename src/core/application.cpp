@@ -12,7 +12,7 @@ Application::Application() : m_running(true), m_cursor_enabled(true) {
 
 bool Application::init() {
     // Create window
-    if (!window.create(this, 800, 600, "Engine")) {
+    if (!window.create("Engine", 800, 600)) {
         ERR("[Application] Window creation failed!");
         return false;
     }
@@ -128,7 +128,9 @@ bool Application::init() {
     sm.add_system<RenderSystem>();
     sm.init_all(em, cm);
 
-    // Define actions
+    // Link callbacks and define actions
+    ic.link_callbacks(window);
+
     ic.register_action("Quit", InputType::Key, GLFW_KEY_ESCAPE);
     ic.on_action_pressed("Quit", [&]() { window.close(); });
     ic.register_action("ToggleCursor", InputType::Key, GLFW_KEY_C);
@@ -138,7 +140,7 @@ bool Application::init() {
 
         if (m_cursor_enabled) {
             // Reset delta and move cursor to center
-            glm::ivec2 size = window.get_size();
+            glm::ivec2 size = window.size();
             ic.set_mouse_delta(glm::dvec2{0.0});
             ic.set_mouse_pos(glm::dvec2{size.x / 2.0, size.y / 2.0});
         }
@@ -151,7 +153,7 @@ bool Application::init() {
 }
 
 void Application::run() {
-    double last = window.get_time();
+    double last = window.time();
 
     // FPS tracking
     int32_t frames = 0;
@@ -163,7 +165,7 @@ void Application::run() {
     auto& ic = cm.get_context<InputContext>();
 
     while (!window.should_close()) {
-        double now = window.get_time();
+        double now = window.time();
         float dt = float(now - last);
         dt = std::clamp(dt, 0.0f, 0.25f);  // avoid spiral of death
         last = now;
@@ -191,8 +193,4 @@ void Application::run() {
 void Application::shutdown() {
     window.destroy();
     sm.shutdown_all(em, cm);
-}
-
-InputContext& Application::get_input_context() {
-    return cm.get_context<InputContext>();
 }

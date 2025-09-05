@@ -16,8 +16,6 @@ public:
     void run();
     void shutdown();
 
-    InputContext& get_input_context();
-
 private:
     Window window;
 

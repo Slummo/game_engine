@@ -2,7 +2,7 @@
 #include "core/application.h"
 #include "core/log.h"
 
-bool Window::create(Application* app_ptr, int32_t width, int32_t height, const std::string& title) {
+bool Window::create(const std::string& title, int32_t width, int32_t height) {
     // Init GLFW
     if (!glfwInit()) {
         ERR("[Window] Failed to init GLFW");
@@ -22,7 +22,6 @@ bool Window::create(Application* app_ptr, int32_t width, int32_t height, const s
         return false;
     }
     glfwMakeContextCurrent(m_handle);
-    glfwSetWindowUserPointer(m_handle, app_ptr);
 
     // Load OpenGL
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -30,42 +29,22 @@ bool Window::create(Application* app_ptr, int32_t width, int32_t height, const s
         return false;
     }
 
-    // Set viewport
-    int32_t fb_w, fb_h;
-    get_framebuffer_size(&fb_w, &fb_h);
-    glViewport(0, 0, fb_w, fb_h);
+    // Set initial size
+    glfwGetFramebufferSize(m_handle, &m_size.x, &m_size.y);
+    glViewport(0, 0, m_size.x, m_size.y);
 
-    // Set callbacks
-    glfwSetFramebufferSizeCallback(
-        m_handle, [](GLFWwindow* /*w*/, int32_t width, int32_t height) { glViewport(0, 0, width, height); });
+    // Store this instance
+    glfwSetWindowUserPointer(m_handle, this);
 
-    glfwSetKeyCallback(m_handle, [](GLFWwindow* w, int32_t key, int32_t scancode, int32_t action, int32_t mods) {
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
-        app->get_input_context().on_key(key, scancode, action, mods);
-    });
+    // Set resize callback
+    glfwSetFramebufferSizeCallback(m_handle, framebuffer_size_callback);
 
-    glfwSetMouseButtonCallback(m_handle, [](GLFWwindow* w, int32_t button, int32_t action, int32_t mods) {
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
-        app->get_input_context().on_mouse_button(button, action, mods);
-    });
-
-    glfwSetCursorPosCallback(m_handle, [](GLFWwindow* w, double xpos, double ypos) {
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
-        app->get_input_context().on_cursor_pos(xpos, ypos);
-    });
-
-    glfwSetScrollCallback(m_handle, [](GLFWwindow* w, double xoffset, double yoffset) {
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
-        app->get_input_context().on_scroll(xoffset, yoffset);
-    });
-
-    glfwSetCharCallback(m_handle, [](GLFWwindow* w, uint32_t codepoint) {
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
-        app->get_input_context().on_char(codepoint);
-    });
-
-    m_width = width;
-    m_height = height;
+    // Set all other callbacks
+    glfwSetKeyCallback(m_handle, key_callback);
+    glfwSetMouseButtonCallback(m_handle, mouse_button_callback);
+    glfwSetCursorPosCallback(m_handle, cursor_pos_callback);
+    glfwSetScrollCallback(m_handle, scroll_callback);
+    glfwSetCharCallback(m_handle, char_callback);
 
     // OpenAL
     ALCdevice* device = alcOpenDevice(NULL);
@@ -78,9 +57,7 @@ bool Window::create(Application* app_ptr, int32_t width, int32_t height, const s
 }
 
 void Window::show() const {
-    if (m_handle) {
-        glfwShowWindow(m_handle);
-    }
+    glfwShowWindow(m_handle);
 }
 
 void Window::poll_events() const {
@@ -95,19 +72,36 @@ bool Window::should_close() const {
     return glfwWindowShouldClose(m_handle);
 }
 
-glm::ivec2 Window::get_size() const {
-    return glm::ivec2(m_width, m_height);
+const glm::ivec2& Window::size() const {
+    return m_size;
 }
 
-void Window::get_framebuffer_size(int32_t* x, int32_t* y) const {
-    glfwGetFramebufferSize(m_handle, x, y);
-}
-
-double Window::get_time() const {
+double Window::time() const {
     return glfwGetTime();
 }
+
 void Window::set_input_mode(int32_t mode, int32_t value) const {
     glfwSetInputMode(m_handle, mode, value);
+}
+
+void Window::set_key_callback(std::function<void(int32_t key, int32_t scancode, int32_t action, int32_t mods)> cb) {
+    m_key_callback = cb;
+}
+
+void Window::set_mouse_button_callback(std::function<void(int32_t button, int32_t action, int32_t mods)> cb) {
+    m_mouse_button_callback = cb;
+}
+
+void Window::set_cursor_pos_callback(std::function<void(double xpos, double ypos)> cb) {
+    m_cursor_pos_callback = cb;
+}
+
+void Window::set_scroll_callback(std::function<void(double xoffset, double yoffset)> cb) {
+    m_scroll_callback = cb;
+}
+
+void Window::set_char_callback(std::function<void(uint32_t codepoint)> cb) {
+    m_char_callback = cb;
 }
 
 void Window::close() const {
@@ -128,4 +122,50 @@ void Window::destroy() {
     alcMakeContextCurrent(NULL);
     alcDestroyContext(context);
     alcCloseDevice(device);
+}
+
+void Window::framebuffer_size_callback(GLFWwindow* window, int32_t width, int32_t height) {
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (!win) {
+        return;
+    }
+
+    win->m_size.x = width;
+    win->m_size.y = height;
+    glViewport(0, 0, width, height);
+}
+
+void Window::key_callback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t action, int32_t mods) {
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (win && win->m_key_callback) {
+        win->m_key_callback(key, scancode, action, mods);
+    }
+}
+
+void Window::mouse_button_callback(GLFWwindow* window, int32_t button, int32_t action, int32_t mods) {
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (win && win->m_mouse_button_callback) {
+        win->m_mouse_button_callback(button, action, mods);
+    }
+}
+
+void Window::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos) {
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (win && win->m_cursor_pos_callback) {
+        win->m_cursor_pos_callback(xpos, ypos);
+    }
+}
+
+void Window::scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (win && win->m_scroll_callback) {
+        win->m_scroll_callback(xoffset, yoffset);
+    }
+}
+
+void Window::char_callback(GLFWwindow* window, uint32_t codepoint) {
+    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if (win && win->m_char_callback) {
+        win->m_char_callback(codepoint);
+    }
 }

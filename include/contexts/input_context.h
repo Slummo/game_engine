@@ -1,6 +1,7 @@
 #pragma once
 
 #include "contexts/icontext.h"
+#include "core/window.h"
 
 #include <cstdint>
 #include <variant>
@@ -42,6 +43,8 @@ using ActionCallback = std::function<void()>;
 class InputContext : public IContext {
 public:
     InputContext();
+
+    void link_callbacks(Window& win);
 
     // GLFW callbacks
     void on_key(int32_t key, int32_t /*scancode*/, int32_t action, int32_t mods);

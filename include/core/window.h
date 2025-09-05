@@ -1,6 +1,9 @@
 #pragma once
+
 #include <string>
 #include <cstdint>
+#include <functional>
+
 #include <glad/glad.h>  // Import glad first
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
@@ -10,22 +13,36 @@ class Application;
 
 class Window {
 public:
-    Window() = default;
-
-    bool create(Application* app_ptr, int32_t width, int32_t height, const std::string& title);
+    bool create(const std::string& title, int32_t width, int32_t height);
     void show() const;
     void poll_events() const;
     void swap_buffers() const;
     bool should_close() const;
-    glm::ivec2 get_size() const;
-    void get_framebuffer_size(int32_t* x, int32_t* y) const;
-    double get_time() const;
+    const glm::ivec2& size() const;
+    double time() const;
     void set_input_mode(int32_t mode, int32_t value) const;
+    void set_key_callback(std::function<void(int32_t key, int32_t scancode, int32_t action, int32_t mods)> cb);
+    void set_mouse_button_callback(std::function<void(int32_t button, int32_t action, int32_t mods)> cb);
+    void set_cursor_pos_callback(std::function<void(double xpos, double ypos)> cb);
+    void set_scroll_callback(std::function<void(double xoffset, double yoffset)> cb);
+    void set_char_callback(std::function<void(uint32_t codepoint)> cb);
     void close() const;
     void destroy();
 
+    std::function<void(int32_t, int32_t, int32_t, int32_t)> m_key_callback;
+    std::function<void(int32_t, int32_t, int32_t)> m_mouse_button_callback;
+    std::function<void(double, double)> m_cursor_pos_callback;
+    std::function<void(double, double)> m_scroll_callback;
+    std::function<void(uint32_t)> m_char_callback;
+
 private:
     GLFWwindow* m_handle = nullptr;
-    int32_t m_width = 0;
-    int32_t m_height = 0;
+    glm::ivec2 m_size{0};
+
+    static void framebuffer_size_callback(GLFWwindow* window, int32_t width, int32_t height);
+    static void key_callback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t action, int32_t mods);
+    static void mouse_button_callback(GLFWwindow* window, int32_t button, int32_t action, int32_t mods);
+    static void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
+    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    static void char_callback(GLFWwindow* window, uint32_t codepoint);
 };

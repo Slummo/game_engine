@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <span>
 
 #include <glm/glm.hpp>
 
@@ -29,9 +30,11 @@ public:
         return "assets/fonts/";
     }
 
+    bool has_char(uint8_t c) const;
+    void compute_vertices(uint8_t c, float* x, float y, float scale, std::span<float, 16> vertices) const;
+
     const std::string& name() const;
     AssetID texture_id() const;
-    const std::unordered_map<uint8_t, CharacterGlyph>& chars() const;
 
 protected:
     std::ostream& print(std::ostream& os) const override;

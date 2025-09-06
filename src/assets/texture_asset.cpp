@@ -129,47 +129,27 @@ std::ostream& operator<<(std::ostream& os, const TextureParams& params) {
     return os;
 }
 
-TextureInfo::TextureInfo(TextureKind k, TextureParams p, MaterialTextureType type) : kind(k), params(std::move(p)) {
-    if (kind == TextureKind::Material) {
-        data_variant = type;
-    } else {
-        data_variant = std::monostate{};
-    }
-}
-
-TextureInfo::TextureInfo(TextureKind k) : kind(k) {
-    if (kind == TextureKind::Material) {
-        params = TextureParams::default_material_params();
-        data_variant = MaterialTextureType::Diffuse;
-    } else {
-        params = TextureParams::default_font_params();
-        data_variant = std::monostate{};
-    }
-}
-
-TextureInfo::TextureInfo(MaterialTextureType type) : kind(TextureKind::Material) {
-    params = TextureParams::default_material_params();
-    data_variant = type;
-}
-
-MaterialTextureType& TextureInfo::material_type() {
-    if (kind != TextureKind::Material) {
-        throw std::runtime_error("[TextureInfo] Not a material texture!");
-    }
-    return std::get<MaterialTextureType>(data_variant);
-}
-
-const MaterialTextureType& TextureInfo::material_type() const {
-    if (kind != TextureKind::Material) {
-        throw std::runtime_error("[TextureInfo] Not a material texture!");
-    }
-    return std::get<MaterialTextureType>(data_variant);
+TextureInfo::TextureInfo(TextureKind k, MaterialTextureType type, TextureParams p, int32_t width, int32_t height,
+                         int32_t channels, std::string path)
+    : kind(k),
+      type(type),
+      params(std::move(p)),
+      width(width),
+      height(height),
+      channels(channels),
+      full_path(std::move(path)) {
 }
 
 std::ostream& operator<<(std::ostream& os, const TextureInfo& info) {
     os << "TextureInfo(kind: " << info.kind << ", params: " << info.params;
     if (info.kind == TextureKind::Material) {
-        os << ", material_texture_type: " << info.material_type();
+        os << ", material_texture_type: " << info.type;
+    }
+
+    os << ", width: " << info.width << ", height: " << info.height << ", channels: " << info.channels;
+
+    if (!info.full_path.empty()) {
+        os << ", full_path: " << info.full_path;
     }
 
     os << ")";
@@ -177,63 +157,52 @@ std::ostream& operator<<(std::ostream& os, const TextureInfo& info) {
     return os;
 }
 
-std::optional<std::shared_ptr<TextureAsset>> TextureAsset::load_from_file(const std::string& path, TextureInfo info) {
+std::optional<std::shared_ptr<TextureAsset>> TextureAsset::load_from_file(const std::string& path,
+                                                                          MaterialTextureType mat_type,
+                                                                          const TextureParams& params) {
     auto tex = std::make_shared<TextureAsset>();
 
     int32_t w = 0;
     int32_t h = 0;
     int32_t c = 0;
 
-    if (info.kind == TextureKind::Material) {
-        stbi_set_flip_vertically_on_load(true);
-        uint8_t* data = stbi_load(path.c_str(), &w, &h, &c, 0);
-        if (!data) {
-            ERR("[TextureAsset] Failed to load image: " << path << " (" << stbi_failure_reason() << ")")
-            return std::nullopt;
-        }
-        bool res = tex->upload(w, h, c, data, info.params, false);
-        stbi_image_free(data);
-        if (!res) {
-            ERR("[TextureAsset] Failed to upload image texture: " << path);
-            return std::nullopt;
-        }
+    stbi_set_flip_vertically_on_load(true);
+    uint8_t* data = stbi_load(path.c_str(), &w, &h, &c, 0);
+    if (!data) {
+        ERR("[TextureAsset] Failed to load image: " << path << " (" << stbi_failure_reason() << ")")
+        return std::nullopt;
     }
-
-    tex->m_width = w;
-    tex->m_height = h;
-    tex->m_channels = c;
-    tex->m_full_path = std::string(path);
-    tex->m_info = std::move(info);
-
-    return tex;
-}
-
-std::optional<std::shared_ptr<TextureAsset>> TextureAsset::load_from_file(const std::string& path, TextureKind kind) {
-    return TextureAsset::load_from_file(path, TextureInfo(kind));
-}
-
-std::optional<std::shared_ptr<TextureAsset>> TextureAsset::load_from_buffer(int32_t width, int32_t height,
-                                                                            int32_t channels, const uint8_t* data,
-                                                                            const TextureParams& params) {
-    auto tex = std::make_shared<TextureAsset>();
-    bool res = tex->upload(width, height, channels, data, params, true);
-
+    tex->m_info = TextureInfo(TextureKind::Material, mat_type, params, w, h, c, std::string(path));
+    bool res = tex->upload(data);
+    stbi_image_free(data);
     if (!res) {
-        ERR("[TextureAsset] Failed to upload texture");
+        ERR("[TextureAsset] Failed to upload texture from path: " << path);
         return std::nullopt;
     }
 
-    tex->m_width = width;
-    tex->m_height = height;
-    tex->m_channels = channels;
-    tex->m_full_path = std::string("nopath");
-    tex->m_info = TextureInfo(TextureKind::Font, params, MaterialTextureType::None);
-
     return tex;
 }
 
-const std::string& TextureAsset::full_path() {
-    return m_full_path;
+std::optional<std::shared_ptr<TextureAsset>> TextureAsset::load_from_buffer(int32_t width, int32_t height,
+                                                                            int32_t channels,
+                                                                            const std::vector<uint8_t>& pixels,
+                                                                            TextureKind kind, MaterialTextureType type,
+                                                                            const TextureParams& params) {
+    if (kind == TextureKind::Font && type != MaterialTextureType::None) {
+        ERR("[TextureAsset] Trying to load a Font texture with a material type set!");
+        return std::nullopt;
+    }
+
+    auto tex = std::make_shared<TextureAsset>();
+    tex->m_info = TextureInfo(kind, type, params, width, height, channels, "");
+    bool res = tex->upload(pixels.data());
+
+    if (!res) {
+        ERR("[TextureAsset] Failed to upload texture from buffer");
+        return std::nullopt;
+    }
+
+    return tex;
 }
 
 std::shared_ptr<TextureAsset> TextureAsset::create_fallback() {
@@ -262,7 +231,9 @@ std::shared_ptr<TextureAsset> TextureAsset::create_fallback() {
     }
 
     auto tex = std::make_shared<TextureAsset>();
-    if (!tex->upload(size, size, channels, pixels.data(), tex->m_info.params, false)) {
+    tex->m_info = TextureInfo(TextureKind::Material, MaterialTextureType::Diffuse,
+                              TextureParams::default_material_params(), size, size, channels, "");
+    if (!tex->upload(pixels.data())) {
         ERR("[TextureAsset] Failed to upload fallback");
         return nullptr;
     }
@@ -285,24 +256,8 @@ void TextureAsset::unbind(uint32_t slot) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-bool TextureAsset::is_loaded() const {
-    return m_id != 0;
-}
-
 uint32_t TextureAsset::get_id() const {
     return m_id;
-}
-
-int32_t TextureAsset::width() const {
-    return m_width;
-}
-
-int32_t TextureAsset::height() const {
-    return m_height;
-}
-
-int32_t TextureAsset::channels() const {
-    return m_channels;
 }
 
 const TextureInfo& TextureAsset::info() const {
@@ -317,68 +272,56 @@ TextureAsset::~TextureAsset() {
 }
 
 std::ostream& TextureAsset::print(std::ostream& os) const {
-    return os << "TextureAsset(tex_id: " << m_id << ", width: " << m_width << ", height: " << m_height
-              << ", channels: " << m_channels << ", info: " << m_info << ", path: " << m_full_path << ")";
+    return os << "TextureAsset(tex_id: " << m_id << ", info: " << m_info << ")";
 }
 
-bool TextureAsset::upload(int32_t width, int32_t height, int32_t channels, const uint8_t* data,
-                          const TextureParams& params, bool is_font) {
-    if (width <= 0 || height <= 0 || channels <= 0 || !data) {
-        ERR("[TextureAsset] Invalid arguments in upload");
-        return false;
-    }
-
+bool TextureAsset::upload(const uint8_t* data) {
     GLenum format = GL_RGB;
     GLenum internal_format = GL_RGB8;
-    if (channels == 4) {
+    if (m_info.channels == 4) {
         format = GL_RGBA;
-        internal_format = params.srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
-    } else if (channels == 3) {
+        internal_format = m_info.params.srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+    } else if (m_info.channels == 3) {
         format = GL_RGB;
-        internal_format = params.srgb ? GL_SRGB8 : GL_RGB8;
-    } else if (channels == 1) {
+        internal_format = m_info.params.srgb ? GL_SRGB8 : GL_RGB8;
+    } else if (m_info.channels == 1) {
         format = GL_RED;
         internal_format = GL_R8;
     } else {
-        ERR("[TextureAsset] Unsupported channel count: " << channels);
+        ERR("[TextureAsset] Unsupported channel count: " << m_info.channels);
         return false;
     }
 
     glGenTextures(1, &m_id);
     glBindTexture(GL_TEXTURE_2D, m_id);
 
-    if (is_font) {
+    // Save and restore previous alignment
+    GLint prev_align = 0;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &prev_align);
+
+    if (m_info.kind == TextureKind::Font) {
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     } else {
-        // Set pixel alignment based on row size
-        GLint alignment = 4;
-        size_t row_bytes = static_cast<size_t>(width) * static_cast<size_t>(channels);
-        if ((row_bytes % 8) == 0) {
-            alignment = 8;
-        } else if ((row_bytes % 4) == 0) {
-            alignment = 4;
-        } else if ((row_bytes % 2) == 0) {
-            alignment = 2;
-        } else {
-            alignment = 1;
-        }
-
+        // Compute optimal alignment based on row byte size
+        size_t row_bytes = static_cast<size_t>(m_info.width) * static_cast<size_t>(m_info.channels);
+        GLint alignment = (row_bytes % 8 == 0) ? 8 : (row_bytes % 4 == 0) ? 4 : (row_bytes % 2 == 0) ? 2 : 1;
         glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
     }
 
     // Upload pixel data
-    glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, internal_format, m_info.width, m_info.height, 0, format, GL_UNSIGNED_BYTE, data);
 
     // Parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLenum>(params.wrap_s));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLenum>(params.wrap_t));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLenum>(params.mag_filter));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLenum>(params.min_filter));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLenum>(m_info.params.wrap_s));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLenum>(m_info.params.wrap_t));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLenum>(m_info.params.mag_filter));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLenum>(m_info.params.min_filter));
 
-    if (params.generate_mipmaps) {
+    if (m_info.params.generate_mipmaps) {
         glGenerateMipmap(GL_TEXTURE_2D);
     }
 
+    glPixelStorei(GL_UNPACK_ALIGNMENT, prev_align);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return true;

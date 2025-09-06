@@ -31,7 +31,7 @@ std::optional<std::shared_ptr<FontAsset>> FontAsset::load_from_file(const std::s
     int32_t w = 1024;
     int32_t h = 1024;
     int32_t c = 1;
-    std::vector<uint8_t> buffer(w * h, 0);
+    std::vector<uint8_t> pixels(w * h, 0);
 
     int32_t pen_x = 0;
     int32_t pen_y = 0;
@@ -56,7 +56,7 @@ std::optional<std::shared_ptr<FontAsset>> FontAsset::load_from_file(const std::s
             for (int32_t x = 0; x < static_cast<int32_t>(bitmap.width); x++) {
                 int32_t dst_x = pen_x + x;
                 int32_t dst_y = pen_y + y;
-                buffer[dst_y * w + dst_x] = bitmap.buffer[y * bitmap.pitch + x];
+                pixels[dst_y * w + dst_x] = bitmap.buffer[y * bitmap.pitch + x];
             }
         }
 
@@ -73,7 +73,7 @@ std::optional<std::shared_ptr<FontAsset>> FontAsset::load_from_file(const std::s
     }
 
     FT_Done_Face(face);
-    auto tex_opt = TextureAsset::load_from_buffer(w, h, c, buffer.data(), TextureParams::default_font_params());
+    auto tex_opt = TextureAsset::load_from_buffer(w, h, c, pixels);
     if (!tex_opt) {
         ERR("[FontAsset] Failed to load font: " << path);
         return std::nullopt;
@@ -84,16 +84,42 @@ std::optional<std::shared_ptr<FontAsset>> FontAsset::load_from_file(const std::s
     return font;
 }
 
+bool FontAsset::has_char(uint8_t c) const {
+    auto it = m_chars.find(c);
+    return it != m_chars.end();
+}
+
+void FontAsset::compute_vertices(uint8_t c, float* x, float y, float scale, std::span<float, 16> vertices) const {
+    auto it = m_chars.find(c);
+    if (it == m_chars.end()) {
+        return;
+    }
+
+    const CharacterGlyph& g = it->second;
+
+    float pos_x = *x + g.bearing.x * scale;
+    float pos_y = y - (g.size.y - g.bearing.y) * scale;
+    float size_x = g.size.x * scale;
+    float size_y = g.size.y * scale;
+
+    float buf[4][4] = {
+        {pos_x, pos_y + size_y, g.uv_0.x, g.uv_1.y},          // bottom-left
+        {pos_x, pos_y, g.uv_0.x, g.uv_0.y},                   // top-left
+        {pos_x + size_x, pos_y, g.uv_1.x, g.uv_0.y},          // top-right
+        {pos_x + size_x, pos_y + size_y, g.uv_1.x, g.uv_1.y}  // bottom-right
+    };
+
+    std::copy(&buf[0][0], &buf[0][0] + 16, vertices.begin());
+
+    *x += g.advance * scale;
+}
+
 const std::string& FontAsset::name() const {
     return m_name;
 }
 
 AssetID FontAsset::texture_id() const {
     return m_texture;
-}
-
-const std::unordered_map<uint8_t, CharacterGlyph>& FontAsset::chars() const {
-    return m_chars;
 }
 
 std::ostream& FontAsset::print(std::ostream& os) const {

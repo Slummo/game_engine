@@ -168,29 +168,15 @@ void RenderSystem::render_text(RenderContext& rc, const std::string& text, float
     glBindBuffer(GL_ARRAY_BUFFER, rc.text.vbo);
 
     for (uint8_t c : text) {
-        auto it = font.chars().find(c);
-        if (it == font.chars().end()) {
+        if (!font.has_char(c)) {
             continue;
         }
 
-        const CharacterGlyph& g = it->second;
+        std::array<float, 16> vertices;
+        font.compute_vertices(c, &x, y, scale, vertices);
 
-        float xpos = x + g.bearing.x * scale;
-        float ypos = y - (g.size.y - g.bearing.y) * scale;
-        float w = g.size.x * scale;
-        float h = g.size.y * scale;
-
-        float vertices[4][4] = {
-            {xpos, ypos + h, g.uv_0.x, g.uv_1.y},     // bottom-left
-            {xpos, ypos, g.uv_0.x, g.uv_0.y},         // top-left
-            {xpos + w, ypos, g.uv_1.x, g.uv_0.y},     // top-right
-            {xpos + w, ypos + h, g.uv_1.x, g.uv_1.y}  // bottom-right
-        };
-
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-
-        x += g.advance * scale;  // move cursor
     }
 
     glEnable(GL_DEPTH_TEST);

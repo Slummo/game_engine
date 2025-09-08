@@ -10,10 +10,6 @@ std::ostream& operator<<(std::ostream& os, TextureKind kind) {
             os << "Material";
             break;
         }
-        case TextureKind::Font: {
-            os << "Font";
-            break;
-        }
         default: {
             os << "Unknown";
             break;
@@ -109,15 +105,6 @@ TextureParams TextureParams::default_material_params() {
                          .srgb = false};
 }
 
-TextureParams TextureParams::default_font_params() {
-    return TextureParams{.wrap_s = TextureWrap::CLAMP_TO_EDGE,
-                         .wrap_t = TextureWrap::CLAMP_TO_EDGE,
-                         .min_filter = TextureFilter::LINEAR,
-                         .mag_filter = TextureFilter::LINEAR,
-                         .generate_mipmaps = false,
-                         .srgb = false};
-}
-
 std::ostream& operator<<(std::ostream& os, const TextureParams& params) {
     os << "TextureParams("
        << "wrap_s: " << params.wrap_s << ", "
@@ -177,28 +164,6 @@ std::optional<std::shared_ptr<TextureAsset>> TextureAsset::load_from_file(const 
     stbi_image_free(data);
     if (!res) {
         ERR("[TextureAsset] Failed to upload texture from path: " << path);
-        return std::nullopt;
-    }
-
-    return tex;
-}
-
-std::optional<std::shared_ptr<TextureAsset>> TextureAsset::load_from_buffer(int32_t width, int32_t height,
-                                                                            int32_t channels,
-                                                                            const std::vector<uint8_t>& pixels,
-                                                                            TextureKind kind, MaterialTextureType type,
-                                                                            const TextureParams& params) {
-    if (kind == TextureKind::Font && type != MaterialTextureType::None) {
-        ERR("[TextureAsset] Trying to load a Font texture with a material type set!");
-        return std::nullopt;
-    }
-
-    auto tex = std::make_shared<TextureAsset>();
-    tex->m_info = TextureInfo(kind, type, params, width, height, channels, "");
-    bool res = tex->upload(pixels.data());
-
-    if (!res) {
-        ERR("[TextureAsset] Failed to upload texture from buffer");
         return std::nullopt;
     }
 
@@ -299,14 +264,10 @@ bool TextureAsset::upload(const uint8_t* data) {
     GLint prev_align = 0;
     glGetIntegerv(GL_UNPACK_ALIGNMENT, &prev_align);
 
-    if (m_info.kind == TextureKind::Font) {
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    } else {
-        // Compute optimal alignment based on row byte size
-        size_t row_bytes = static_cast<size_t>(m_info.width) * static_cast<size_t>(m_info.channels);
-        GLint alignment = (row_bytes % 8 == 0) ? 8 : (row_bytes % 4 == 0) ? 4 : (row_bytes % 2 == 0) ? 2 : 1;
-        glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
-    }
+    // Compute optimal alignment based on row byte size
+    size_t row_bytes = static_cast<size_t>(m_info.width) * static_cast<size_t>(m_info.channels);
+    GLint alignment = (row_bytes % 8 == 0) ? 8 : (row_bytes % 4 == 0) ? 4 : (row_bytes % 2 == 0) ? 2 : 1;
+    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
 
     // Upload pixel data
     glTexImage2D(GL_TEXTURE_2D, 0, internal_format, m_info.width, m_info.height, 0, format, GL_UNSIGNED_BYTE, data);

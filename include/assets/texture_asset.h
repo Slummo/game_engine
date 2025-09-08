@@ -12,7 +12,7 @@
 #include <stb_image/stb_image.h>
 #include <assimp/scene.h>
 
-enum class TextureKind { None, Material, Font };
+enum class TextureKind { None, Material };
 std::ostream& operator<<(std::ostream& os, TextureKind kind);
 
 enum class MaterialTextureType {
@@ -42,7 +42,6 @@ std::ostream& operator<<(std::ostream& os, TextureFilter filter);
 
 struct TextureParams {
     static TextureParams default_material_params();
-    static TextureParams default_font_params();
 
     TextureWrap wrap_s = TextureWrap::None;
     TextureWrap wrap_t = TextureWrap::None;
@@ -76,10 +75,6 @@ public:
     static std::optional<std::shared_ptr<TextureAsset>> load_from_file(
         const std::string& path, MaterialTextureType mat_type = MaterialTextureType::Diffuse,
         const TextureParams& params = TextureParams::default_material_params());
-    static std::optional<std::shared_ptr<TextureAsset>> load_from_buffer(
-        int32_t width, int32_t height, int32_t channels, const std::vector<uint8_t>& pixels,
-        TextureKind kind = TextureKind::Font, MaterialTextureType type = MaterialTextureType::None,
-        const TextureParams& params = TextureParams::default_font_params());
 
     static const char* base_path() {
         return "assets/textures/";

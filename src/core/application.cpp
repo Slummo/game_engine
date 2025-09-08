@@ -7,6 +7,8 @@
 #include <cmath>
 #include <cstdint>
 
+#include <imgui/imgui.h>
+
 Application::Application() : m_running(true), m_cursor_enabled(true) {
 }
 
@@ -147,6 +149,7 @@ bool Application::init() {
     });
 
     window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    ImGui::GetIO().MouseDrawCursor = false;
     window.show();
 
     return true;
@@ -190,7 +193,6 @@ void Application::run() {
     }
 }
 
-void Application::shutdown() {
-    window.destroy();
+Application::~Application() {
     sm.shutdown_all(em, cm);
 }

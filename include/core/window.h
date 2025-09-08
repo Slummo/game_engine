@@ -27,7 +27,8 @@ public:
     void set_scroll_callback(std::function<void(double xoffset, double yoffset)> cb);
     void set_char_callback(std::function<void(uint32_t codepoint)> cb);
     void close() const;
-    void destroy();
+
+    ~Window();
 
     std::function<void(int32_t, int32_t, int32_t, int32_t)> m_key_callback;
     std::function<void(int32_t, int32_t, int32_t)> m_mouse_button_callback;

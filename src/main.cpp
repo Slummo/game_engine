@@ -7,7 +7,6 @@ int main(void) {
     }
 
     app.run();
-    app.shutdown();
 
     return 0;
 }

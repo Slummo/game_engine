@@ -28,11 +28,19 @@ public:
         return m_position;
     }
 
+    glm::vec3& position_mut() {
+        return m_position;
+    }
+
     const glm::quat& rotation() const {
         return m_rotation;
     }
 
     const glm::vec3& scale() const {
+        return m_scale;
+    }
+
+    glm::vec3& scale_mut() {
         return m_scale;
     }
 

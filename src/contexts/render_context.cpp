@@ -18,12 +18,9 @@ DebugObject::~DebugObject() {
 RenderContext::RenderContext(EntityManager& em) {
     AssetManager& am = AssetManager::instance();
     colored_line_shader_id = am.load_asset<ShaderAsset>("colored_line/");
-    text_shader_id = am.load_asset<ShaderAsset>("text/");
-    font_id = am.load_asset<FontAsset>("arial/ARIAL.TTF", "arial");
 
     create_hitbox();
     create_arrow(em);
-    create_text();
 }
 
 void RenderContext::create_hitbox() {
@@ -89,27 +86,6 @@ void RenderContext::create_arrow(EntityManager& em) {
 
     glEnableVertexAttribArray(0);  // position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
-
-    glBindVertexArray(0);
-}
-
-void RenderContext::create_text() {
-    glGenVertexArrays(1, &text.vao);
-    glGenBuffers(1, &text.vbo);
-    glGenBuffers(1, &text.ebo);
-
-    glBindVertexArray(text.vao);
-    glBindBuffer(GL_ARRAY_BUFFER, text.vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 4 * 4, nullptr, GL_DYNAMIC_DRAW);  // 4 vertices
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, text.ebo);
-    uint32_t indices[] = {0, 1, 2, 2, 3, 0};
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(0);  // position
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)0);
-    glEnableVertexAttribArray(1);  // uv
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
 
     glBindVertexArray(0);
 }

@@ -2,6 +2,10 @@
 #include "core/application.h"
 #include "core/log.h"
 
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
+
 bool Window::create(const std::string& title, int32_t width, int32_t height) {
     // Init GLFW
     if (!glfwInit()) {
@@ -46,12 +50,22 @@ bool Window::create(const std::string& title, int32_t width, int32_t height) {
     glfwSetScrollCallback(m_handle, scroll_callback);
     glfwSetCharCallback(m_handle, char_callback);
 
-    // OpenAL
+    // Init OpenAL
     ALCdevice* device = alcOpenDevice(nullptr);
     if (device) {
         ALCcontext* context = alcCreateContext(device, nullptr);
         alcMakeContextCurrent(context);
     }
+
+    // Init ImGUI
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(m_handle, true);
+    ImGui_ImplOpenGL3_Init("#version 330");  // your GLSL version
 
     return true;
 }
@@ -108,13 +122,11 @@ void Window::close() const {
     glfwSetWindowShouldClose(m_handle, 1);
 }
 
-void Window::destroy() {
-    // glfw
-    if (m_handle) {
-        glfwDestroyWindow(m_handle);
-    }
-    glfwTerminate();
-    m_handle = nullptr;
+Window::~Window() {
+    // ImGui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     // OpenAL
     ALCcontext* context = alcGetCurrentContext();
@@ -122,6 +134,13 @@ void Window::destroy() {
     alcMakeContextCurrent(nullptr);
     alcDestroyContext(context);
     alcCloseDevice(device);
+
+    // GLFW
+    if (m_handle) {
+        glfwDestroyWindow(m_handle);
+    }
+    glfwTerminate();
+    m_handle = nullptr;
 }
 
 void Window::framebuffer_size_callback(GLFWwindow* window, int32_t width, int32_t height) {

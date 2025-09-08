@@ -6,7 +6,9 @@
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <GLFW/glfw3.h>
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
 
 void RenderSystem::init(EntityManager& /*em*/, RenderContext& rc, CameraContext& /*cc*/, InputContext& ic) {
     glEnable(GL_DEPTH_TEST);
@@ -24,7 +26,6 @@ void RenderSystem::update(EntityManager& em, RenderContext& rc, CameraContext& c
     glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Don't use wiremode for text
     glPolygonMode(GL_FRONT_AND_BACK, rc.wiremode ? GL_LINE : GL_FILL);
 
     // Only get the main camera for now
@@ -33,10 +34,9 @@ void RenderSystem::update(EntityManager& em, RenderContext& rc, CameraContext& c
     render_hitboxes(em, cam, rc);
     render_debug(em, cam, rc);
 
+    // Don't use wiremode for gui
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    std::string fps_string(std::format("FPS: {}", rc.fps));
-    render_text(rc, fps_string, 10.0f, 560.0f, 0.5f, glm::vec3(1.0f));
+    render_gui(em, rc);
 }
 
 void RenderSystem::render_scene(EntityManager& em, Camera& cam, RenderContext& rc) {
@@ -115,7 +115,7 @@ void RenderSystem::render_hitboxes(EntityManager& em, Camera& cam, RenderContext
     glBindVertexArray(0);
 }
 
-void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam, RenderContext& rc) {
+void RenderSystem::render_debug(EntityManager& em, Camera& cam, RenderContext& rc) {
     if (!rc.debug_render_enabled) {
         return;
     }
@@ -139,49 +139,34 @@ void RenderSystem::render_debug(EntityManager& /*em*/, Camera& cam, RenderContex
     glDrawArrays(GL_LINES, 0, 2);
     glLineWidth(1.0f);
     glBindVertexArray(0);
+
+    // Render debug GUI
+    ImGui::GetIO().MouseDrawCursor = true;
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    // Draw FPS counter
+    ImVec2 pos(10, 10);
+    ImU32 color = IM_COL32(255, 255, 255, 255);
+    std::string fps_text = std::format("FPS: {}", rc.fps);
+    ImGui::GetForegroundDrawList()->AddText(pos, color, fps_text.c_str());
+
+    ImGui::Begin("Transforms");
+    ImGui::BeginChild("Scrolling");
+    for (auto [e, tr] : em.entities_with<Transform>()) {
+        ImGui::Text("Entity %d", e);
+        ImGui::SliderFloat3(("Position##" + std::to_string(e)).c_str(), glm::value_ptr(tr.position_mut()), 0.0f,
+                            100.0f);
+        ImGui::SliderFloat3(("Scale##" + std::to_string(e)).c_str(), glm::value_ptr(tr.scale_mut()), 0.0f, 100.0f);
+    }
+    ImGui::EndChild();
+    ImGui::End();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void RenderSystem::render_text(RenderContext& rc, const std::string& text, float x, float y, float scale,
-                               const glm::vec3& color) {
-    AssetManager& am = AssetManager::instance();
-
-    ShaderAsset& shader = am.get_asset<ShaderAsset>(rc.text_shader_id);
-    if (am.last_used_shader() != rc.text_shader_id) {
-        shader.use();
-        am.set_last_used_shader(rc.text_shader_id);
-    }
-
-    glm::mat4 proj = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
-    shader.set_matrix_4f("Projection", glm::value_ptr(proj));
-    shader.set_vec_3f("color", color);
-
-    FontAsset& font = am.get_asset<FontAsset>(rc.font_id);
-    TextureAsset& font_tex = am.get_asset<TextureAsset>(font.texture_id());
-    font_tex.bind(0);
-    shader.set_int("font_texture", 0);
-
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glBindVertexArray(rc.text.vao);
-    glBindBuffer(GL_ARRAY_BUFFER, rc.text.vbo);
-
-    for (uint8_t c : text) {
-        if (!font.has_char(c)) {
-            continue;
-        }
-
-        std::array<float, 16> vertices;
-        font.compute_vertices(c, &x, y, scale, vertices);
-
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices.data());
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-    }
-
-    glEnable(GL_DEPTH_TEST);
-    glDisable(GL_BLEND);
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    TextureAsset::unbind();
+void RenderSystem::render_gui(EntityManager& em, RenderContext& rc) {
+    // TODO
 }

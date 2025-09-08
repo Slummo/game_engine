@@ -14,7 +14,8 @@ public:
 
     bool init();
     void run();
-    void shutdown();
+
+    ~Application();
 
 private:
     Window window;

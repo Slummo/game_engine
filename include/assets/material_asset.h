@@ -1,8 +1,7 @@
 #pragma once
 
-#include "assets/iasset.h"
+#include "assets/interfaces.h"
 #include "assets/texture_asset.h"
-#include "assets/shader_asset.h"
 
 #include <glm/glm.hpp>
 #include <string>
@@ -11,35 +10,17 @@
 #include <variant>
 
 struct TexData {
-    MaterialTextureType type;
+    MaterialTextureType type = MaterialTextureType::None;
     std::string path;
-    bool is_path_absolute = false;
 };
 
 using ParamValue = std::variant<float, glm::vec3, std::string>;
 
-class Material : public IAsset {
+class MaterialAsset : public IAsset {
 public:
-    // Loads texture assets and the shader asset
-    Material(std::string name, std::vector<TexData> textures_data, const std::string& shader_name,
-             bool double_sided = false);
+    MaterialAsset(std::string name, AssetID shader_id);
 
-    // For material with a single texture
-    Material(std::string name, MaterialTextureType texture_type, std::string texture_name,
-             const std::string& shader_name, bool double_sided = false);
-
-    // Loads texture assets and the shader asset
-    Material(const aiMaterial* ai_mat, const std::string& model_path, const std::string& shader_name);
-
-    // Used to create fallback material
-    Material(std::string name);
-
-    static std::shared_ptr<Material> create_fallback();
-
-    void set_uniforms();
-
-    const std::string& name() const;
-
+    void add_texture(MaterialTextureType type, AssetID texture_id);
     bool get_texture(MaterialTextureType type, AssetID& out) const;
 
     template <typename T>
@@ -68,22 +49,30 @@ public:
         return default_value;
     }
 
-    // Binds the shader and returns it
-    const ShaderAsset& bound_shader() const;
+    AssetID shader_id() const;
+
+    static std::string load_name(const aiMaterial* ai_mat);
+    static std::vector<TexData> load_textures(const aiMaterial* ai_mat, const std::string& model_path,
+                                              std::vector<MaterialTextureType> texture_types);
 
 protected:
     std::ostream& print(std::ostream& os) const override;
 
 private:
-    std::string m_name;
     std::unordered_map<MaterialTextureType, AssetID> m_textures;
     std::unordered_map<std::string, ParamValue> m_params;
-    AssetID m_shader_id;
-    bool m_double_sided;
+    AssetID m_shader_id = INVALID_ASSET;
+    bool m_double_sided = false;
+};
 
-    Material() = default;
+enum class MaterialDepSlot { Shader, Ambient, Diffuse, Specular };
 
-    static std::string load_name(const aiMaterial* ai_mat);
-    static std::vector<TexData> load_textures(const aiMaterial* ai_mat, const std::string& model_path,
-                                              std::vector<MaterialTextureType> texture_types);
+template <>
+class AssetCreator<MaterialAsset> : public AssetCreatorDep<MaterialAsset, MaterialDepSlot> {
+public:
+    using Base = AssetCreatorDep<MaterialAsset, MaterialDepSlot>;
+    using Base::Base;
+
+    static std::shared_ptr<MaterialAsset> create_fallback(AssetManager& am);
+    AssetID finish() override;
 };

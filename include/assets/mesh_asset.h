@@ -1,6 +1,6 @@
 #pragma once
 
-#include "assets/iasset.h"
+#include "assets/interfaces.h"
 #include "core/types/aabb.h"
 
 #include <vector>
@@ -46,25 +46,15 @@ struct Vertex_PNT {
     // }
 };
 
-size_t vertex_stride(VertexFormat format);
-
 struct BoneInfo {
     glm::mat4 offset_matrix;         // Converts from mesh space to bone space
     glm::mat4 final_transformation;  // Transformation product of the scene hierarchy
 };
 
-struct MeshAsset : public IAsset {
+class MeshAsset : public IAsset {
 public:
     MeshAsset(std::string name, VertexFormat format, const void* vertices, size_t vertices_count, const void* indices,
               size_t indices_count, AssetID material_id);
-
-    static std::shared_ptr<MeshAsset> create_fallback();
-
-    static AssetID create_cube_PNT(AssetID material_id, float uv_scale_x = 1.0f, float uv_scale_y = 1.0f);
-    static AssetID create_cube_PNT(float uv_scale_x = 1.0f, float uv_scale_y = 1.0f);
-
-    static AssetID create_cube_PT(AssetID material_id, float uv_scale_x = 1.0f, float uv_scale_y = 1.0f);
-    static AssetID create_cube_PT(float uv_scale_x = 1.0f, float uv_scale_y = 1.0f);
 
     void draw() const;
 
@@ -78,11 +68,10 @@ protected:
     std::ostream& print(std::ostream& os) const override;
 
 private:
-    std::string m_name;
     VertexFormat m_format;
-    uint32_t m_vertices_num;
-    uint32_t m_indices_num;
-    AssetID m_material_id;
+    uint32_t m_vertices_num = 0;
+    uint32_t m_indices_num = 0;
+    AssetID m_material_id = INVALID_ASSET;
 
     AABB m_local_aabb;
 
@@ -92,4 +81,31 @@ private:
 
     void compute_local_aabb(const void* vertices);
     void upload(const void* vertices, const void* indices);
+};
+
+enum class MeshDepSlot { Material };
+enum class MeshType { NONE, CUBE_PNT, CUBE_PT, CUSTOM };
+
+template <>
+class AssetCreator<MeshAsset> : public AssetCreatorDep<MeshAsset, MeshDepSlot> {
+public:
+    using Base = AssetCreatorDep<MeshAsset, MeshDepSlot>;
+    using Base::Base;
+
+    static std::shared_ptr<MeshAsset> create_fallback(AssetManager& am);
+    AssetCreator<MeshAsset> set_mesh_type(MeshType type);
+    AssetCreator<MeshAsset> set_uv_scale(glm::vec2 uv_scale);
+    AssetCreator<MeshAsset> set_vertex_format(VertexFormat format);
+    AssetCreator<MeshAsset> set_data(const void* vertices, uint32_t vertices_num, const void* indices,
+                                     uint32_t indices_num);
+    AssetID finish() override;
+
+private:
+    MeshType type = MeshType::NONE;
+    glm::vec2 uv_scale{1.0f};
+    VertexFormat format;
+    const void* vertices = nullptr;
+    uint32_t vertices_num = 0;
+    uint32_t indices_num = 0;
+    const void* indices = nullptr;
 };

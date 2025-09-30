@@ -1,6 +1,6 @@
 #pragma once
 
-#include "assets/iasset.h"
+#include "assets/interfaces.h"
 
 #include <stdexcept>
 #include <memory>
@@ -12,7 +12,7 @@
 #include <stb_image/stb_image.h>
 #include <assimp/scene.h>
 
-enum class TextureKind { None, Material };
+enum class TextureKind { None, MaterialAsset };
 std::ostream& operator<<(std::ostream& os, TextureKind kind);
 
 enum class MaterialTextureType {
@@ -22,6 +22,8 @@ enum class MaterialTextureType {
     Ambient = aiTextureType_AMBIENT
 };
 std::ostream& operator<<(std::ostream& os, MaterialTextureType type);
+
+MaterialTextureType to_mat_texture_type(TextureType type);
 
 enum class TextureWrap : GLenum {
     None,
@@ -70,15 +72,7 @@ std::ostream& operator<<(std::ostream& os, const TextureInfo& info);
 
 class TextureAsset : public IAsset {
 public:
-    static std::shared_ptr<TextureAsset> create_fallback();
-
-    static std::optional<std::shared_ptr<TextureAsset>> load_from_file(
-        const std::string& path, MaterialTextureType mat_type = MaterialTextureType::Diffuse,
-        const TextureParams& params = TextureParams::default_material_params());
-
-    static const char* base_path() {
-        return "assets/textures/";
-    }
+    TextureAsset(std::string name);
 
     void bind(uint32_t slot = 0) const;
     static void unbind(uint32_t slot = 0);
@@ -86,7 +80,11 @@ public:
     uint32_t get_id() const;
     const TextureInfo& info() const;
 
+    void set_info(TextureInfo info);
+
     ~TextureAsset();
+
+    bool upload(const uint8_t* data);
 
 protected:
     std::ostream& print(std::ostream& os) const override;
@@ -94,6 +92,29 @@ protected:
 private:
     uint32_t m_id = 0;
     TextureInfo m_info;
+};
 
-    bool upload(const uint8_t* data);
+template <>
+class AssetCreator<TextureAsset> : public AssetCreatorNoDep<TextureAsset> {
+public:
+    using Base = AssetCreatorNoDep<TextureAsset>;
+    using Base::Base;
+
+    static std::shared_ptr<TextureAsset> create_fallback(AssetManager& am);
+};
+
+template <>
+class AssetLoader<TextureAsset> : public AssetLoaderNoDep<TextureAsset> {
+public:
+    using Base = AssetLoaderNoDep<TextureAsset>;
+    using Base::Base;
+
+    static const char* base_path();
+    AssetLoader<TextureAsset> set_type(MaterialTextureType t);
+    AssetLoader<TextureAsset> set_params(TextureParams ps);
+    AssetID finish() override;
+
+private:
+    MaterialTextureType type;
+    TextureParams params;
 };

@@ -1,9 +1,8 @@
 #pragma once
 
 #include "systems/isystem.h"
-#include "contexts/camera_context.h"
 
-class CameraSystem : public ISystem<CameraContext> {
+class CameraSystem : public ISystem {
 public:
-    void update(EntityManager& em, CameraContext& cc) override;
+    void update(Engine& engine) override;
 };

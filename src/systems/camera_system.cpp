@@ -1,7 +1,15 @@
 #include "systems/camera_system.h"
+#include "components/transform.h"
+#include "components/model.h"
+#include "core/types/aabb.h"
+#include "contexts/camera_context.h"
+#include "core/engine.h"
+#include "managers/context_manager.h"
+#include "managers/entity_manager.h"
+
+#include <cstdint>
 
 #include <glm/glm.hpp>
-#include <cstdint>
 
 void transform_aabb(const glm::vec3& in_min, const glm::vec3& in_max, const glm::mat4& model, glm::vec3& out_min,
                     glm::vec3& out_max) {
@@ -11,8 +19,8 @@ void transform_aabb(const glm::vec3& in_min, const glm::vec3& in_max, const glm:
         {in_min.x, in_max.y, in_max.z}, {in_max.x, in_max.y, in_max.z},
     };
 
-    out_min = glm::vec3(std::numeric_limits<float>::infinity());
-    out_max = glm::vec3(-std::numeric_limits<float>::infinity());
+    out_min = glm::vec3(FLT_MAX);
+    out_max = glm::vec3(FLT_MIN);
 
     for (int32_t i = 0; i < 8; i++) {
         glm::vec4 local_corner(corners[i], 1.0f);
@@ -22,7 +30,11 @@ void transform_aabb(const glm::vec3& in_min, const glm::vec3& in_max, const glm:
     }
 }
 
-void CameraSystem::update(EntityManager& em, CameraContext& cc) {
+void CameraSystem::update(Engine& engine) {
+    auto& cc = engine.cm().get<CameraContext>();
+
+    EntityManager& em = engine.em();
+
     if (!cc.main_camera.is_active) {
         return;
     }

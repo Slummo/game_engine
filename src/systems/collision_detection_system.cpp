@@ -1,10 +1,20 @@
 #include "systems/collision_detection_system.h"
+#include "components/transform.h"
+#include "components/collider.h"
+#include "components/model.h"
+#include "core/types/aabb.h"
+#include "assets/model_asset.h"
+#include "assets/mesh_asset.h"
+#include "contexts/collision_context.h"
+#include "core/engine.h"
+#include "managers/context_manager.h"
+#include "managers/entity_manager.h"
+#include "managers/asset_manager.h"
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <algorithm>
-#include <limits>
 #include <stdexcept>
 
 #define COL_EPS 1e-6f
@@ -203,7 +213,7 @@ bool obb_vs_obb(EntityID a, const WorldOBB& A, EntityID b, const WorldOBB& B, Co
     glm::vec3 b_he = B.half_extents;
 
     // Test the 15 axes and find the minimal penetration axis
-    float min_overlap = std::numeric_limits<float>::infinity();
+    float min_overlap = FLT_MAX;
     glm::vec3 min_axis(1, 0, 0);
     bool separated = false;
 
@@ -306,16 +316,34 @@ bool obb_vs_obb(EntityID a, const WorldOBB& A, EntityID b, const WorldOBB& B, Co
     return true;
 }
 
-void CollisionDetectionSystem::init(EntityManager& em, CollisionContext& /*cc*/) {
+void CollisionDetectionSystem::init(Engine& engine) {
+    EntityManager& em = engine.em();
+    AssetManager& am = engine.am();
+
     for (auto [e, col, m] : em.entities_with<Collider, Model>()) {
+        auto& mesh_ids = am.get<ModelAsset>(m.asset_id).meshes();
+
+        // Compute model's local AABB
+        m.local_aabb.min = glm::vec3(FLT_MAX);
+        m.local_aabb.max = glm::vec3(FLT_MIN);
+        for (AssetID mesh_id : mesh_ids) {
+            MeshAsset& mesh = am.get<MeshAsset>(mesh_id);
+            const AABB& mesh_local_aabb = mesh.local_aabb();
+            m.local_aabb.min = glm::min(m.local_aabb.min, mesh_local_aabb.min);
+            m.local_aabb.max = glm::max(m.local_aabb.max, mesh_local_aabb.max);
+        }
+
         // Update colliders with model's local aabb
-        const AABB& local_aabb = m.local_aabb;
-        col.size = local_aabb.max - local_aabb.min;
-        col.offset = (local_aabb.min + local_aabb.max) * 0.5f;
+        col.size = m.local_aabb.max - m.local_aabb.min;
+        col.offset = (m.local_aabb.min + m.local_aabb.max) * 0.5f;
     }
 }
 
-void CollisionDetectionSystem::update(EntityManager& em, CollisionContext& cc) {
+void CollisionDetectionSystem::update(Engine& engine) {
+    auto& cc = engine.cm().get<CollisionContext>();
+
+    EntityManager& em = engine.em();
+
     cc.contacts.clear();
     std::vector<CollisionEntry> entries;
     for (auto [e, tr, col] : em.entities_with<Transform, Collider>()) {

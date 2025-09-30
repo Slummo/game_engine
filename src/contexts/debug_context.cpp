@@ -1,7 +1,13 @@
-#include "contexts/render_context.h"
+#include "contexts/debug_context.h"
+#include "assets/shader_asset.h"
 #include "components/transform.h"
 #include "components/light.h"
+#include "core/window.h"
+#include "core/engine.h"
+#include "managers/entity_manager.h"
 #include "managers/asset_manager.h"
+
+#include <glad/glad.h>
 
 DebugObject::~DebugObject() {
     if (ebo) {
@@ -15,15 +21,14 @@ DebugObject::~DebugObject() {
     }
 }
 
-RenderContext::RenderContext(EntityManager& em) {
-    AssetManager& am = AssetManager::instance();
-    colored_line_shader_id = am.load_asset<ShaderAsset>("colored_line/");
+DebugContext::DebugContext(Engine& engine, Window& window) : window(window) {
+    colored_line_shader_id = engine.am().load<ShaderAsset>("colored_line_shader", "colored_line").finish();
 
     create_hitbox();
-    create_arrow(em);
+    create_arrow(engine.em());
 }
 
-void RenderContext::create_hitbox() {
+void DebugContext::create_hitbox() {
     // 8 verts of unit cube centered at origin
     float verts[] = {
         -0.5f, -0.5f, -0.5f,  // 0
@@ -59,7 +64,7 @@ void RenderContext::create_hitbox() {
     glBindVertexArray(0);
 }
 
-void RenderContext::create_arrow(EntityManager& em) {
+void DebugContext::create_arrow(EntityManager& em) {
     Transform tr;
     Light light;
     for (auto [_e, l_tr, l] : em.entities_with<Transform, Light>()) {

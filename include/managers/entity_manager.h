@@ -13,7 +13,7 @@
 
 class EntityManager {
 public:
-    EntityID create_entity() {
+    EntityID create_entity(const std::string& name = "") {
         EntityID id;
 
         // Reuse previously removed entities
@@ -24,6 +24,8 @@ public:
             id = m_next_id++;
         }
 
+        m_names[id] = std::string(name.empty() ? "unnamed_entity_" + id : name);
+
         return id;
     }
 
@@ -33,21 +35,22 @@ public:
             pool->remove_component(entity_id);
         }
 
+        m_names.erase(entity_id);
         m_free_ids.push_back(entity_id);
     }
 
     // Attach a certain component to an entity
     template <typename T, typename... Args>
         requires std::is_base_of_v<IComponent, T>
-    T& add_component(EntityID entity_id, Args&&... args) {
-        return get_pool<T>().add_component(entity_id, std::forward<Args>(args)...);
+    T& add(EntityID entity_id, Args&&... args) {
+        return get_pool<T>().add(entity_id, std::forward<Args>(args)...);
     }
 
     // Adds multiple components that don't have arguments in their constructors
     template <typename... Components>
         requires(std::is_base_of_v<IComponent, Components> && ...)
     void add_components(EntityID entity_id) {
-        (add_component<Components>(entity_id), ...);
+        (add<Components>(entity_id), ...);
     }
 
     // Checks if an entity has a certain component attached
@@ -114,6 +117,15 @@ public:
                });
     }
 
+    const std::string& get_name(EntityID entity_id) const {
+        auto it = m_names.find(entity_id);
+        if (it == m_names.end()) {
+            throw std::runtime_error("[EntityManager] Failed to retrieve the name of the entity!");
+        }
+
+        return it->second;
+    }
+
 private:
     struct IComponentPool {
         virtual ~IComponentPool() = default;
@@ -126,7 +138,7 @@ private:
         std::unordered_map<EntityID, T> components;
 
         template <typename... Args>
-        T& add_component(EntityID entity_id, Args&&... args) {
+        T& add(EntityID entity_id, Args&&... args) {
             auto [it, _] = components.try_emplace(entity_id, std::forward<Args>(args)...);
             return it->second;
         }
@@ -137,7 +149,7 @@ private:
 
         T& get_component(EntityID entity_id) {
             if (!has_component(entity_id)) {
-                throw std::runtime_error("[EntityManager] An entity doesnt have the required component!");
+                throw std::runtime_error("[EntityManager] The entity doesn't have the required component!");
             }
 
             return components.at(entity_id);
@@ -149,7 +161,8 @@ private:
     };
 
     std::unordered_map<std::type_index, std::unique_ptr<IComponentPool>> m_pools;
-    EntityID m_next_id = 0;
+    EntityID m_next_id = 1;  // 0 is for invalid entities
+    std::unordered_map<EntityID, std::string> m_names;
     std::vector<EntityID> m_free_ids;
 
     template <typename T>

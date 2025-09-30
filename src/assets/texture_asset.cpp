@@ -1,13 +1,12 @@
 #include "assets/texture_asset.h"
-#include "core/log.h"
 #include "managers/asset_manager.h"
 
 #include <cstring>
 
 std::ostream& operator<<(std::ostream& os, TextureKind kind) {
     switch (kind) {
-        case TextureKind::Material: {
-            os << "Material";
+        case TextureKind::MaterialAsset: {
+            os << "MaterialAsset";
             break;
         }
         default: {
@@ -44,6 +43,26 @@ std::ostream& operator<<(std::ostream& os, MaterialTextureType type) {
     }
 
     return os;
+}
+
+MaterialTextureType to_mat_texture_type(TextureType type) {
+    switch (type) {
+        case TextureType::None: {
+            return MaterialTextureType::None;
+        }
+        case TextureType::Diffuse: {
+            return MaterialTextureType::Diffuse;
+        }
+        case TextureType::Specular: {
+            return MaterialTextureType::Specular;
+        }
+        case TextureType::Ambient: {
+            return MaterialTextureType::Ambient;
+        }
+        default: {
+            throw std::runtime_error("[to_mat_texture_type] Unknown TextureType!");
+        }
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, TextureWrap wrap) {
@@ -129,7 +148,7 @@ TextureInfo::TextureInfo(TextureKind k, MaterialTextureType type, TextureParams 
 
 std::ostream& operator<<(std::ostream& os, const TextureInfo& info) {
     os << "TextureInfo(kind: " << info.kind << ", params: " << info.params;
-    if (info.kind == TextureKind::Material) {
+    if (info.kind == TextureKind::MaterialAsset) {
         os << ", material_texture_type: " << info.type;
     }
 
@@ -144,66 +163,7 @@ std::ostream& operator<<(std::ostream& os, const TextureInfo& info) {
     return os;
 }
 
-std::optional<std::shared_ptr<TextureAsset>> TextureAsset::load_from_file(const std::string& path,
-                                                                          MaterialTextureType mat_type,
-                                                                          const TextureParams& params) {
-    auto tex = std::make_shared<TextureAsset>();
-
-    int32_t w = 0;
-    int32_t h = 0;
-    int32_t c = 0;
-
-    stbi_set_flip_vertically_on_load(true);
-    uint8_t* data = stbi_load(path.c_str(), &w, &h, &c, 0);
-    if (!data) {
-        ERR("[TextureAsset] Failed to load image: " << path << " (" << stbi_failure_reason() << ")")
-        return std::nullopt;
-    }
-    tex->m_info = TextureInfo(TextureKind::Material, mat_type, params, w, h, c, std::string(path));
-    bool res = tex->upload(data);
-    stbi_image_free(data);
-    if (!res) {
-        ERR("[TextureAsset] Failed to upload texture from path: " << path);
-        return std::nullopt;
-    }
-
-    return tex;
-}
-
-std::shared_ptr<TextureAsset> TextureAsset::create_fallback() {
-    int32_t size = 128;
-    int32_t check_size = 16;
-
-    const int32_t channels = 3;
-    std::vector<uint8_t> pixels(size * size * channels);
-
-    for (int32_t y = 0; y < size; y++) {
-        for (int32_t x = 0; x < size; x++) {
-            bool c = ((x / check_size) & 1) ^ ((y / check_size) & 1);
-            int32_t idx = (y * size + x) * channels;
-            if (c) {
-                // fuchsia
-                pixels[idx + 0] = 255;  // R
-                pixels[idx + 1] = 0;    // G
-                pixels[idx + 2] = 255;  // B
-            } else {
-                // black
-                pixels[idx + 0] = 0;
-                pixels[idx + 1] = 0;
-                pixels[idx + 2] = 0;
-            }
-        }
-    }
-
-    auto tex = std::make_shared<TextureAsset>();
-    tex->m_info = TextureInfo(TextureKind::Material, MaterialTextureType::Diffuse,
-                              TextureParams::default_material_params(), size, size, channels, "");
-    if (!tex->upload(pixels.data())) {
-        ERR("[TextureAsset] Failed to upload fallback");
-        return nullptr;
-    }
-
-    return tex;
+TextureAsset::TextureAsset(std::string name) : IAsset(name.empty() ? "unnamed_texture" : std::move(name)) {
 }
 
 void TextureAsset::bind(uint32_t slot) const {
@@ -227,6 +187,10 @@ uint32_t TextureAsset::get_id() const {
 
 const TextureInfo& TextureAsset::info() const {
     return m_info;
+}
+
+void TextureAsset::set_info(TextureInfo info) {
+    m_info = std::move(info);
 }
 
 TextureAsset::~TextureAsset() {
@@ -286,4 +250,86 @@ bool TextureAsset::upload(const uint8_t* data) {
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return true;
+}
+
+std::shared_ptr<TextureAsset> AssetCreator<TextureAsset>::create_fallback(AssetManager& /*am*/) {
+    int32_t size = 128;
+    int32_t check_size = 16;
+
+    const int32_t channels = 3;
+    std::vector<uint8_t> pixels(size * size * channels);
+
+    for (int32_t y = 0; y < size; y++) {
+        for (int32_t x = 0; x < size; x++) {
+            bool c = ((x / check_size) & 1) ^ ((y / check_size) & 1);
+            int32_t idx = (y * size + x) * channels;
+            if (c) {
+                // fuchsia
+                pixels[idx + 0] = 255;  // R
+                pixels[idx + 1] = 0;    // G
+                pixels[idx + 2] = 255;  // B
+            } else {
+                // black
+                pixels[idx + 0] = 0;
+                pixels[idx + 1] = 0;
+                pixels[idx + 2] = 0;
+            }
+        }
+    }
+
+    auto tex = std::make_shared<TextureAsset>("fallback_texture");
+    tex->set_info({TextureKind::MaterialAsset, MaterialTextureType::Diffuse, TextureParams::default_material_params(),
+                   size, size, channels, ""});
+    if (!tex->upload(pixels.data())) {
+        ERR("[TextureAsset] Failed to upload fallback");
+        return nullptr;
+    }
+
+    return tex;
+}
+
+const char* AssetLoader<TextureAsset>::base_path() {
+    return "assets/textures/";
+}
+
+AssetLoader<TextureAsset> AssetLoader<TextureAsset>::set_type(MaterialTextureType t) {
+    type = std::move(t);
+    return *this;
+}
+AssetLoader<TextureAsset> AssetLoader<TextureAsset>::set_params(TextureParams ps) {
+    params = std::move(ps);
+    return *this;
+}
+
+AssetID AssetLoader<TextureAsset>::finish() {
+    AssetID id = am.is_loaded(absolute_path);
+    if (id != INVALID_ASSET) {
+        return id;
+    }
+
+    auto tex = std::make_shared<TextureAsset>(std::move(name));
+
+    int32_t w = 0;
+    int32_t h = 0;
+    int32_t c = 0;
+
+    stbi_set_flip_vertically_on_load(true);
+    uint8_t* data = stbi_load(absolute_path.c_str(), &w, &h, &c, 0);
+    if (!data) {
+        ERR("[AssetLoader<TextureAsset>] Failed to load image: " << absolute_path << " (" << stbi_failure_reason()
+                                                                 << ")")
+        return INVALID_ASSET;
+    }
+
+    tex->set_info({TextureKind::MaterialAsset, std::move(type), std::move(params), w, h, c, absolute_path});
+    bool res = tex->upload(data);
+    stbi_image_free(data);
+    if (!res) {
+        ERR("[AssetLoader<TextureAsset>] Failed to upload texture from absolute_path: " << absolute_path);
+        return INVALID_ASSET;
+    }
+
+    id = am.add<TextureAsset>(std::move(tex));
+    am.add_loaded(std::move(absolute_path), id);
+    return id;
 }

@@ -1,12 +1,23 @@
 #include "systems/fp_controller_system.h"
+#include "components/transform.h"
+#include "components/rigidbody.h"
+#include "components/camera.h"
+#include "components/fp_controller.h"
+#include "contexts/input_context.h"
+#include "contexts/event_context.h"
+#include "core/engine.h"
+#include "managers/context_manager.h"
+#include "managers/entity_manager.h"
+
+#include <iostream>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <imgui/imgui.h>
 
-#include <GLFW/glfw3.h>
-#include <iostream>
+void FirstPersonControllerSystem::init(Engine& engine) {
+    auto& ic = engine.cm().get<InputContext>();
 
-void FirstPersonControllerSystem::init(EntityManager& /*em*/, InputContext& ic, EventContext& /*ec*/) {
     ic.register_action("MoveLeft", InputType::Key, GLFW_KEY_A);
     ic.register_action("MoveRight", InputType::Key, GLFW_KEY_D);
     ic.register_action("MoveForwards", InputType::Key, GLFW_KEY_W);
@@ -14,12 +25,22 @@ void FirstPersonControllerSystem::init(EntityManager& /*em*/, InputContext& ic, 
     ic.register_action("Jump", InputType::Key, GLFW_KEY_SPACE);
 }
 
-void FirstPersonControllerSystem::update(EntityManager& em, InputContext& ic, EventContext& ec) {
+void FirstPersonControllerSystem::update(Engine& engine) {
+    auto& ic = engine.cm().get<InputContext>();
+    auto& ec = engine.cm().get<EventContext>();
+
+    EntityManager& em = engine.em();
+
+    auto io = ImGui::GetIO();
+    if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
+        return;
+    }
+
     for (auto [e, tr, rb, cam, fpc] : em.entities_with<Transform, RigidBody, Camera, FPController>()) {
         // Mouse look
-        glm::vec2 mouse_delta = ic.mouse_delta();
-        cam.update_yaw(mouse_delta.x * fpc.look_speed);     // + for right
-        cam.update_pitch(-mouse_delta.y * fpc.look_speed);  // - for down
+        glm::dvec2 cursor_pos_delta = ic.cursor_pos_delta();
+        cam.update_yaw(cursor_pos_delta.x * fpc.look_speed);     // + for right
+        cam.update_pitch(-cursor_pos_delta.y * fpc.look_speed);  // - for down
 
         // Apply yaw only to the transform
         glm::quat q_yaw = glm::angleAxis(glm::radians(cam.yaw()), glm::vec3(0.0f, 1.0f, 0.0f));

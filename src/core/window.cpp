@@ -1,10 +1,23 @@
 #include "core/window.h"
-#include "core/application.h"
 #include "core/log.h"
+
+#include <csignal>
 
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
+
+void GLAPIENTRY debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei /*length*/,
+                               const GLchar* message, const void* /*user_param*/) {
+    fprintf(stderr, "[GL_DEBUG] source=0x%x type=0x%x id=%u severity=0x%x\n\t%s\n", source, type, id, severity,
+            message);
+
+    if (severity == GL_DEBUG_SEVERITY_HIGH) {
+        raise(SIGTRAP);
+    }
+}
+
+Window::Window() = default;
 
 bool Window::create(const std::string& title, int32_t width, int32_t height) {
     // Init GLFW
@@ -13,10 +26,11 @@ bool Window::create(const std::string& title, int32_t width, int32_t height) {
         return false;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
     // Create the actual window
     m_handle = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
@@ -50,6 +64,14 @@ bool Window::create(const std::string& title, int32_t width, int32_t height) {
     glfwSetScrollCallback(m_handle, scroll_callback);
     glfwSetCharCallback(m_handle, char_callback);
 
+    // Set debug callbacks
+    if (GLAD_GL_KHR_debug || GLAD_GL_VERSION_4_3) {
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(debug_callback, nullptr);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+    }
+
     // Init OpenAL
     ALCdevice* device = alcOpenDevice(nullptr);
     if (device) {
@@ -65,7 +87,7 @@ bool Window::create(const std::string& title, int32_t width, int32_t height) {
 
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(m_handle, true);
-    ImGui_ImplOpenGL3_Init("#version 330");  // your GLSL version
+    ImGui_ImplOpenGL3_Init("#version 330");
 
     return true;
 }
@@ -94,8 +116,31 @@ double Window::time() const {
     return glfwGetTime();
 }
 
+int32_t Window::mouse_button(int32_t button) const {
+    return glfwGetMouseButton(m_handle, button);
+}
+
+glm::dvec2 Window::cursor_pos() {
+    glm::dvec2 pos(0.0);
+    glfwGetCursorPos(m_handle, &pos.x, &pos.y);
+    return pos;
+}
+
+bool Window::capture() const {
+    return m_capture;
+}
+
 void Window::set_input_mode(int32_t mode, int32_t value) const {
     glfwSetInputMode(m_handle, mode, value);
+}
+
+void Window::set_capture(bool value) {
+    m_capture = value;
+    set_input_mode(GLFW_CURSOR, m_capture ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+}
+
+void Window::set_cursor_pos(glm::dvec2& pos) {
+    glfwSetCursorPos(m_handle, pos.x, pos.y);
 }
 
 void Window::set_key_callback(std::function<void(int32_t key, int32_t scancode, int32_t action, int32_t mods)> cb) {

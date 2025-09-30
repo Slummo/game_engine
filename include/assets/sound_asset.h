@@ -1,6 +1,6 @@
 #pragma once
 
-#include "assets/iasset.h"
+#include "assets/interfaces.h"
 
 #include <memory>
 #include <string>
@@ -9,29 +9,39 @@
 
 class SoundAsset : public IAsset {
 public:
-    static std::shared_ptr<SoundAsset> create_fallback();
-
-    // With sndfile
-    static std::optional<std::shared_ptr<SoundAsset>> load_from_file(const std::string& path);
-    static const char* base_path() {
-        return "assets/sounds/";
-    }
-    const std::string& full_path();
+    SoundAsset(std::string name);
 
     uint32_t buffer_id() const;
-    int32_t channels() const;
-    int32_t samplerate() const;
 
     ~SoundAsset();
+
+    int32_t channels;
+    int32_t samplerate;
+
+    bool upload(int32_t channels, const void* data, int32_t size, int32_t samplerate);
 
 protected:
     std::ostream& print(std::ostream& os) const override;
 
 private:
     uint32_t m_buffer_id;
-    int32_t m_channels;
-    int32_t m_samplerate;
-    std::string m_full_path;
+};
 
-    bool upload(int32_t channels, const void* data, int32_t size, int32_t samplerate);
+template <>
+class AssetCreator<SoundAsset> : public AssetCreatorNoDep<SoundAsset> {
+public:
+    using Base = AssetCreatorNoDep<SoundAsset>;
+    using Base::Base;
+
+    static std::shared_ptr<SoundAsset> create_fallback(AssetManager& am);
+};
+
+template <>
+class AssetLoader<SoundAsset> : public AssetLoaderNoDep<SoundAsset> {
+public:
+    using Base = AssetLoaderNoDep<SoundAsset>;
+    using Base::Base;
+
+    static const char* base_path();
+    AssetID finish() override;
 };

@@ -2,7 +2,7 @@
 
 #include "systems/isystem.h"
 
-class RotationSystem : public ISystem<PhysicsContext> {
+class RotationSystem : public ISystem {
 public:
-    void update(EntityManager& em, PhysicsContext& pc) override;
+    void update(Engine& engine) override;
 };

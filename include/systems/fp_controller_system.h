@@ -2,8 +2,8 @@
 
 #include "systems/isystem.h"
 
-class FirstPersonControllerSystem : public ISystem<InputContext, EventContext> {
+class FirstPersonControllerSystem : public ISystem {
 public:
-    void init(EntityManager& em, InputContext& ic, EventContext& ec) override;
-    void update(EntityManager& em, InputContext& ic, EventContext& ec) override;
+    void init(Engine& engine) override;
+    void update(Engine& engine) override;
 };

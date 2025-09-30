@@ -1,10 +1,25 @@
 #include "systems/collision_resolution_system.h"
+#include "components/fp_controller.h"
+#include "components/transform.h"
+#include "components/rigidbody.h"
+#include "components/collider.h"
+#include "components/player.h"
+#include "contexts/collision_context.h"
+#include "contexts/event_context.h"
+#include "core/engine.h"
+#include "managers/context_manager.h"
+#include "managers/entity_manager.h"
 
 #define GROUND_NORMAL_THRESHOLD 0.75f
 #define COR_PER 0.1f  // positional correction percentage
 #define SLOP 0.01f    // penetration allowance
 
-void CollisionResolutionSystem::update(EntityManager& em, CollisionContext& cc, EventContext& ec) {
+void CollisionResolutionSystem::update(Engine& engine) {
+    auto& cc = engine.cm().get<CollisionContext>();
+    auto& ec = engine.cm().get<EventContext>();
+
+    EntityManager& em = engine.em();
+
     for (auto [_e, fpc] : em.entities_with<FPController>()) {
         fpc.is_grounded = false;
     }

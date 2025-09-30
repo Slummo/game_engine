@@ -2,9 +2,9 @@
 
 #include "systems/isystem.h"
 
-class LightSystem : public ISystem<> {
+class LightSystem : public ISystem {
 public:
-    void init(EntityManager& em) override;
-    void update(EntityManager& /*em*/) override {
+    void init(Engine& engine) override;
+    void update(Engine& /*engine*/) override {
     }
 };

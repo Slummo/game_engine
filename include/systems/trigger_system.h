@@ -2,9 +2,12 @@
 
 #include "systems/isystem.h"
 
-class TriggerSystem : public ISystem<CollisionContext> {
+class EntityManager;
+class Contact;
+
+class TriggerSystem : public ISystem {
 public:
-    void update(EntityManager& em, CollisionContext& cc) override;
+    void update(Engine& engine) override;
 
 private:
     void resolve_trigger_contact(EntityManager& em, const Contact& c);

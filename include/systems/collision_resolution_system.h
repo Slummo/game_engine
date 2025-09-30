@@ -2,9 +2,12 @@
 
 #include "systems/isystem.h"
 
-class CollisionResolutionSystem : public ISystem<CollisionContext, EventContext> {
+class EntityManager;
+class Contact;
+
+class CollisionResolutionSystem : public ISystem {
 public:
-    void update(EntityManager& em, CollisionContext& cc, EventContext& ec) override;
+    void update(Engine& engine) override;
 
 private:
     void resolve_phys_contact(EntityManager& em, const Contact& c);

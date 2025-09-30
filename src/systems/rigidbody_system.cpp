@@ -1,11 +1,24 @@
 #include "systems/rigidbody_system.h"
+#include "components/transform.h"
+#include "components/rigidbody.h"
+#include "components/fp_controller.h"
+#include "contexts/physics_context.h"
+#include "contexts/event_context.h"
+#include "core/engine.h"
+#include "managers/context_manager.h"
+#include "managers/entity_manager.h"
 
 #define RB_EPS 1e-6f
 #define JMSRF 0.65f                // Jumping movement speed reduction factor
 #define BRAKE_ACCEL 20.0f          // m/s^2 large to stop quickly
 #define STOP_SPEED_THRESHOLD 0.2f  // below this, snap to zero
 
-void RigidBodySystem::init(EntityManager& em, PhysicsContext& pc, EventContext& ec) {
+void RigidBodySystem::init(Engine& engine) {
+    auto& pc = engine.cm().get<PhysicsContext>();
+    auto& ec = engine.cm().get<EventContext>();
+
+    EntityManager& em = engine.em();
+
     ec.subscribe<MoveEvent>([&](const MoveEvent& e) {
         auto [rb, fpc] = em.get_components<RigidBody, FPController>(e.entity);
 
@@ -44,7 +57,11 @@ void RigidBodySystem::init(EntityManager& em, PhysicsContext& pc, EventContext& 
     });
 }
 
-void RigidBodySystem::update(EntityManager& em, PhysicsContext& pc, EventContext& /*ec*/) {
+void RigidBodySystem::update(Engine& engine) {
+    auto& pc = engine.cm().get<PhysicsContext>();
+
+    EntityManager& em = engine.em();
+
     for (auto [e, tr, rb] : em.entities_with<Transform, RigidBody>()) {
         // Skip static bodies
         if (rb.is_static) {

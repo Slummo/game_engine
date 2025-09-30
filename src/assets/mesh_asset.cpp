@@ -1,16 +1,9 @@
 #include "assets/mesh_asset.h"
+#include "assets/material_asset.h"
 #include "managers/asset_manager.h"
-#include "core/log.h"
 
 #include <glad/glad.h>
 #include <iostream>
-
-static void print_gl_error_if_any(const char* context) {
-    GLenum err = glGetError();
-    if (err != GL_NO_ERROR) {
-        ERR("[MeshAsset] Gl error after " << context << " : 0x" << std::hex << err << std::dec)
-    }
-}
 
 size_t vertex_stride(VertexFormat format) {
     switch (format) {
@@ -28,132 +21,13 @@ size_t vertex_stride(VertexFormat format) {
 
 MeshAsset::MeshAsset(std::string name, VertexFormat format, const void* vertices, size_t vertices_count,
                      const void* indices, size_t indices_count, AssetID material_id)
-    : m_name(name.empty() ? "unnamed_mesh" : std::move(name)),
+    : IAsset(name.empty() ? "unnamed_mesh" : std::move(name)),
       m_format(format),
       m_vertices_num(vertices_count),
       m_indices_num(indices_count),
       m_material_id(material_id) {
     compute_local_aabb(vertices);
     upload(vertices, indices);
-}
-
-std::shared_ptr<MeshAsset> MeshAsset::create_fallback() {
-    return std::make_shared<MeshAsset>("fallback_mesh", VertexFormat::POS_TEX, nullptr, 0, nullptr, 0,
-                                       AssetManager::instance().get_fallback_id<Material>());
-}
-
-AssetID MeshAsset::create_cube_PNT(AssetID material_id, float uv_scale_x, float uv_scale_y) {
-    // 24 m_vertices (4 verts per face), each vertex: pos3, nor3, tex2
-    std::vector<Vertex_PNT> vertices = {
-        // Back face (-Z)
-        {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-
-        // Front face (+Z)
-        {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-
-        // Left face (-X)
-        {{-0.5f, 0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{-0.5f, 0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, -0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-
-        // Right face (+X)
-        {{0.5f, 0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-
-        // Bottom face (-Y)
-        {{-0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{-0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-
-        // Top face (+Y)
-        {{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-    };
-
-    std::vector<uint32_t> indices = {
-        0,  1,  2,  2,  3,  0,   // back
-        4,  5,  6,  6,  7,  4,   // front
-        8,  9,  10, 10, 11, 8,   // left
-        12, 13, 14, 14, 15, 12,  // right
-        16, 17, 18, 18, 19, 16,  // bottom
-        20, 21, 22, 22, 23, 20   // top
-    };
-
-    return AssetManager::instance().add_asset<MeshAsset>("cube", VertexFormat::POS_NOR_TEX, vertices.data(),
-                                                         vertices.size(), indices.data(), indices.size(), material_id);
-}
-
-AssetID MeshAsset::create_cube_PNT(float uv_scale_x, float uv_scale_y) {
-    return MeshAsset::create_cube_PNT(AssetManager::instance().get_fallback_id<Material>(), uv_scale_x, uv_scale_y);
-}
-
-AssetID MeshAsset::create_cube_PT(AssetID material_id, float uv_scale_x, float uv_scale_y) {
-    // 24 m_vertices (4 verts per face), each vertex: pos3, tex2
-    std::vector<Vertex_PT> vertices = {
-        // Back face (-Z)
-        {{-0.5f, -0.5f, -0.5f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, -0.5f, -0.5f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, -0.5f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, 0.5f, -0.5f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-
-        // Front face (+Z)
-        {{-0.5f, -0.5f, 0.5f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, -0.5f, 0.5f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, 0.5f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, 0.5f, 0.5f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-
-        // Left face (-X)
-        {{-0.5f, 0.5f, 0.5f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{-0.5f, 0.5f, -0.5f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, -0.5f, -0.5f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, -0.5f, 0.5f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-
-        // Right face (+X)
-        {{0.5f, 0.5f, 0.5f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, -0.5f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{0.5f, -0.5f, -0.5f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{0.5f, -0.5f, 0.5f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-
-        // Bottom face (-Y)
-        {{-0.5f, -0.5f, -0.5f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{0.5f, -0.5f, -0.5f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{0.5f, -0.5f, 0.5f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{-0.5f, -0.5f, 0.5f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-
-        // Top face (+Y)
-        {{-0.5f, 0.5f, -0.5f}, {0.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, -0.5f}, {1.0f * uv_scale_x, 0.0f * uv_scale_y}},
-        {{0.5f, 0.5f, 0.5f}, {1.0f * uv_scale_x, 1.0f * uv_scale_y}},
-        {{-0.5f, 0.5f, 0.5f}, {0.0f * uv_scale_x, 1.0f * uv_scale_y}},
-    };
-
-    std::vector<uint32_t> indices = {
-        0,  1,  2,  2,  3,  0,   // back
-        4,  5,  6,  6,  7,  4,   // front
-        8,  9,  10, 10, 11, 8,   // left
-        12, 13, 14, 14, 15, 12,  // right
-        16, 17, 18, 18, 19, 16,  // bottom
-        20, 21, 22, 22, 23, 20   // top
-    };
-
-    return AssetManager::instance().add_asset<MeshAsset>("cube", VertexFormat::POS_TEX, vertices.data(),
-                                                         vertices.size(), indices.data(), indices.size(), material_id);
-}
-
-AssetID MeshAsset::create_cube_PT(float uv_scale_x, float uv_scale_y) {
-    return MeshAsset::create_cube_PT(AssetManager::instance().get_fallback_id<Material>(), uv_scale_x, uv_scale_y);
 }
 
 void MeshAsset::draw() const {
@@ -195,8 +69,7 @@ const AABB& MeshAsset::local_aabb() const {
 
 std::ostream& MeshAsset::print(std::ostream& os) const {
     return os << "MeshAsset(name: " << m_name << ", vertices_num: " << m_vertices_num
-              << ", indices_num: " << m_indices_num << ", material(asset_id = " << m_material_id
-              << "): " << AssetManager::instance().asset_to_string(m_material_id) << ")";
+              << ", indices_num: " << m_indices_num << ", material_id: " << m_material_id << ")";
 }
 
 void MeshAsset::compute_local_aabb(const void* vertices) {
@@ -206,8 +79,8 @@ void MeshAsset::compute_local_aabb(const void* vertices) {
     }
 
     // Interpret vertices based on the format
-    glm::vec3 min(std::numeric_limits<float>::max());
-    glm::vec3 max(-std::numeric_limits<float>::max());
+    glm::vec3 min(FLT_MAX);
+    glm::vec3 max(FLT_MIN);
 
     switch (m_format) {
         case VertexFormat::POS_TEX: {
@@ -236,6 +109,7 @@ void MeshAsset::compute_local_aabb(const void* vertices) {
 
 void MeshAsset::upload(const void* vertices, const void* indices) {
     if (!vertices || !indices) {
+        ERR("[MeshAsset] NULL parameters in upload()");
         return;
     }
 
@@ -270,6 +144,7 @@ void MeshAsset::upload(const void* vertices, const void* indices) {
         case VertexFormat::POS_TEX: {
             glEnableVertexAttribArray(0);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void*)offsetof(Vertex_PT, pos3));
+
             glEnableVertexAttribArray(1);
             glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (const void*)offsetof(Vertex_PT, tex2));
             break;
@@ -277,8 +152,10 @@ void MeshAsset::upload(const void* vertices, const void* indices) {
         case VertexFormat::POS_NOR_TEX: {
             glEnableVertexAttribArray(0);
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void*)offsetof(Vertex_PNT, pos3));
+
             glEnableVertexAttribArray(1);
             glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (const void*)offsetof(Vertex_PNT, nor3));
+
             glEnableVertexAttribArray(2);
             glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (const void*)offsetof(Vertex_PNT, tex2));
             break;
@@ -290,6 +167,182 @@ void MeshAsset::upload(const void* vertices, const void* indices) {
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
 
-    print_gl_error_if_any("MeshAsset::upload");
+std::shared_ptr<MeshAsset> AssetCreator<MeshAsset>::create_fallback(AssetManager& am) {
+    AssetID fallback_mat = am.get_fallback_id<MaterialAsset>();
+
+    const Vertex_PT fallback_vertices[] = {
+        {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}},
+        {{0.0f, 0.5f, 0.0f}, {0.5f, 1.0f}},
+    };
+    const uint32_t fallback_indices[] = {0, 1, 2};
+
+    return std::make_shared<MeshAsset>("fallback_mesh", VertexFormat::POS_TEX, fallback_vertices, 3, fallback_indices,
+                                       3, fallback_mat);
+}
+
+AssetCreator<MeshAsset> AssetCreator<MeshAsset>::set_mesh_type(MeshType t) {
+    type = t;
+    return *this;
+}
+
+AssetCreator<MeshAsset> AssetCreator<MeshAsset>::set_uv_scale(glm::vec2 scale) {
+    uv_scale = std::move(scale);
+    return *this;
+}
+
+AssetCreator<MeshAsset> AssetCreator<MeshAsset>::set_vertex_format(VertexFormat format) {
+    this->format = std::move(format);
+    return *this;
+}
+
+AssetCreator<MeshAsset> AssetCreator<MeshAsset>::set_data(const void* vertices, uint32_t vertices_num,
+                                                          const void* indices, uint32_t indices_num) {
+    if (!vertices || !indices) {
+        throw std::runtime_error("[AssetCreator<MeshAsset>] null paramters in set_data method!");
+    }
+
+    this->vertices = vertices;
+    this->vertices_num = vertices_num;
+    this->indices = indices;
+    this->indices_num = indices_num;
+
+    return *this;
+}
+
+std::shared_ptr<MeshAsset> create_cube_PNT(AssetID material_id, float sx, float sy) {
+    // 24 m_vertices (4 verts per face), each vertex: pos3, nor3, tex2
+    std::vector<Vertex_PNT> vertices = {
+        // Back face (-Z)
+        {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f * sx, 0.0f * sy}},
+        {{0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f * sx, 1.0f * sy}},
+        {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f * sx, 1.0f * sy}},
+
+        // Front face (+Z)
+        {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f * sx, 0.0f * sy}},
+        {{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f * sx, 1.0f * sy}},
+        {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f * sx, 1.0f * sy}},
+
+        // Left face (-X)
+        {{-0.5f, 0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f * sx, 0.0f * sy}},
+        {{-0.5f, 0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f * sx, 1.0f * sy}},
+        {{-0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f * sx, 1.0f * sy}},
+        {{-0.5f, -0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f * sx, 0.0f * sy}},
+
+        // Right face (+X)
+        {{0.5f, 0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f * sx, 1.0f * sy}},
+        {{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f * sx, 1.0f * sy}},
+        {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f * sx, 0.0f * sy}},
+
+        // Bottom face (-Y)
+        {{-0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f * sx, 1.0f * sy}},
+        {{0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f * sx, 1.0f * sy}},
+        {{0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f * sx, 0.0f * sy}},
+        {{-0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f * sx, 0.0f * sy}},
+
+        // Top face (+Y)
+        {{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f * sx, 1.0f * sy}},
+        {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f * sx, 1.0f * sy}},
+    };
+
+    std::vector<uint32_t> indices = {
+        0,  1,  2,  2,  3,  0,   // back
+        4,  5,  6,  6,  7,  4,   // front
+        8,  9,  10, 10, 11, 8,   // left
+        12, 13, 14, 14, 15, 12,  // right
+        16, 17, 18, 18, 19, 16,  // bottom
+        20, 21, 22, 22, 23, 20   // top
+    };
+
+    return std::make_shared<MeshAsset>("cube_pnt", VertexFormat::POS_NOR_TEX, vertices.data(), vertices.size(),
+                                       indices.data(), indices.size(), material_id);
+}
+
+std::shared_ptr<MeshAsset> create_cube_PT(AssetID material_id, float sx, float sy) {
+    // 24 m_vertices (4 verts per face), each vertex: pos3, tex2
+    std::vector<Vertex_PT> vertices = {
+        // Back face (-Z)
+        {{-0.5f, -0.5f, -0.5f}, {0.0f * sx, 0.0f * sy}},
+        {{0.5f, -0.5f, -0.5f}, {1.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, -0.5f}, {1.0f * sx, 1.0f * sy}},
+        {{-0.5f, 0.5f, -0.5f}, {0.0f * sx, 1.0f * sy}},
+
+        // Front face (+Z)
+        {{-0.5f, -0.5f, 0.5f}, {0.0f * sx, 0.0f * sy}},
+        {{0.5f, -0.5f, 0.5f}, {1.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, 0.5f}, {1.0f * sx, 1.0f * sy}},
+        {{-0.5f, 0.5f, 0.5f}, {0.0f * sx, 1.0f * sy}},
+
+        // Left face (-X)
+        {{-0.5f, 0.5f, 0.5f}, {1.0f * sx, 0.0f * sy}},
+        {{-0.5f, 0.5f, -0.5f}, {1.0f * sx, 1.0f * sy}},
+        {{-0.5f, -0.5f, -0.5f}, {0.0f * sx, 1.0f * sy}},
+        {{-0.5f, -0.5f, 0.5f}, {0.0f * sx, 0.0f * sy}},
+
+        // Right face (+X)
+        {{0.5f, 0.5f, 0.5f}, {1.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, -0.5f}, {1.0f * sx, 1.0f * sy}},
+        {{0.5f, -0.5f, -0.5f}, {0.0f * sx, 1.0f * sy}},
+        {{0.5f, -0.5f, 0.5f}, {0.0f * sx, 0.0f * sy}},
+
+        // Bottom face (-Y)
+        {{-0.5f, -0.5f, -0.5f}, {0.0f * sx, 1.0f * sy}},
+        {{0.5f, -0.5f, -0.5f}, {1.0f * sx, 1.0f * sy}},
+        {{0.5f, -0.5f, 0.5f}, {1.0f * sx, 0.0f * sy}},
+        {{-0.5f, -0.5f, 0.5f}, {0.0f * sx, 0.0f * sy}},
+
+        // Top face (+Y)
+        {{-0.5f, 0.5f, -0.5f}, {0.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, -0.5f}, {1.0f * sx, 0.0f * sy}},
+        {{0.5f, 0.5f, 0.5f}, {1.0f * sx, 1.0f * sy}},
+        {{-0.5f, 0.5f, 0.5f}, {0.0f * sx, 1.0f * sy}},
+    };
+
+    std::vector<uint32_t> indices = {
+        0,  1,  2,  2,  3,  0,   // back
+        4,  5,  6,  6,  7,  4,   // front
+        8,  9,  10, 10, 11, 8,   // left
+        12, 13, 14, 14, 15, 12,  // right
+        16, 17, 18, 18, 19, 16,  // bottom
+        20, 21, 22, 22, 23, 20   // top
+    };
+
+    return std::make_shared<MeshAsset>("cube_pt", VertexFormat::POS_TEX, vertices.data(), vertices.size(),
+                                       indices.data(), indices.size(), material_id);
+}
+
+AssetID AssetCreator<MeshAsset>::finish() {
+    AssetID material_id = resolve_slot(MeshDepSlot::Material, am.get_fallback_id<MaterialAsset>());
+    std::shared_ptr<MeshAsset> mesh = nullptr;
+
+    switch (type) {
+        case MeshType::CUBE_PNT: {
+            mesh = create_cube_PNT(material_id, uv_scale.x, uv_scale.y);
+            break;
+        }
+        case MeshType::CUBE_PT: {
+            mesh = create_cube_PT(material_id, uv_scale.x, uv_scale.y);
+            break;
+        }
+        case MeshType::CUSTOM: {
+            if (!vertices || !indices) {
+                throw std::runtime_error("[AssetCreator<MeshAsset>] null data in finish method!");
+            }
+            mesh = std::make_shared<MeshAsset>(std::move(name), std::move(format), vertices, vertices_num, indices,
+                                               indices_num, material_id);
+            break;
+        }
+        default: {
+            throw std::runtime_error("[AssetCreator<MeshAsset>] Unset or invalid MeshType!");
+        }
+    }
+
+    return am.add<MeshAsset>(std::move(mesh));
 }

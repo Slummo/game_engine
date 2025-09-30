@@ -1,6 +1,6 @@
 #pragma once
 
-#include "assets/iasset.h"
+#include "assets/interfaces.h"
 #include "components/transform.h"
 #include "components/camera.h"
 #include "components/light.h"
@@ -14,24 +14,10 @@
 
 class ModelAsset : public IAsset {
 public:
-    ModelAsset() = delete;
+    ModelAsset(std::string name, std::string directory);
 
-    // Used when loading model from file
-    ModelAsset(std::string name);
+    void draw(AssetManager& am, Transform& tr, Camera& cam, Light& light);
 
-    // Used when creating a model with a single mesh
-    ModelAsset(std::string name, AssetID mesh_id);
-
-    static std::shared_ptr<ModelAsset> create_fallback();
-
-    static std::optional<std::shared_ptr<ModelAsset>> load_from_file(const std::string& path, const std::string& name);
-    static const char* base_path() {
-        return "assets/models/";
-    }
-
-    void draw(Transform& tr, Camera& cam, Light& light);
-
-    const std::string& name() const;
     const std::string& directory() const;
 
     void add_mesh(AssetID mesh_id);
@@ -42,6 +28,27 @@ protected:
 
 private:
     std::string m_directory;
-    std::string m_name;
     std::vector<AssetID> m_meshes;
+};
+
+enum class ModelDepSlot { Mesh };
+
+template <>
+class AssetCreator<ModelAsset> : public AssetCreatorDep<ModelAsset, ModelDepSlot> {
+public:
+    using Base = AssetCreatorDep<ModelAsset, ModelDepSlot>;
+    using Base::Base;
+
+    static std::shared_ptr<ModelAsset> create_fallback(AssetManager& am);
+    AssetID finish() override;
+};
+
+template <>
+class AssetLoader<ModelAsset> : public AssetLoaderNoDep<ModelAsset> {
+public:
+    using Base = AssetLoaderNoDep<ModelAsset>;
+    using Base::Base;
+
+    static const char* base_path();
+    AssetID finish();
 };

@@ -2,8 +2,8 @@
 
 #include "systems/isystem.h"
 
-class CollisionDetectionSystem : public ISystem<CollisionContext> {
+class CollisionDetectionSystem : public ISystem {
 public:
-    void init(EntityManager& em, CollisionContext& cc) override;
-    void update(EntityManager& em, CollisionContext& cc) override;
+    void init(Engine& engine) override;
+    void update(Engine& engine) override;
 };

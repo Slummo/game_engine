@@ -1,10 +1,9 @@
 #pragma once
 
 #include "systems/isystem.h"
-#include "managers/asset_manager.h"
 
-class SoundSystem : public ISystem<EventContext> {
+class SoundSystem : public ISystem {
 public:
-    void init(EntityManager& em, EventContext& ec) override;
-    void update(EntityManager& em, EventContext& ec) override;
+    void init(Engine& engine) override;
+    void update(Engine& engine) override;
 };

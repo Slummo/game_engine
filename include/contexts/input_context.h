@@ -3,11 +3,8 @@
 #include "contexts/icontext.h"
 #include "core/window.h"
 
-#include <cstdint>
 #include <variant>
-#include <string>
 #include <vector>
-#include <glm/glm.hpp>
 #include <bitset>
 #include <unordered_map>
 #include <functional>
@@ -16,6 +13,8 @@ using Key = int32_t;
 using MouseButton = int32_t;
 
 enum class InputType { Key, MouseButton };
+
+#define MAX_KEYS 1024
 
 // What input triggers an Action
 struct Binding {
@@ -53,9 +52,8 @@ public:
     void on_scroll(double /*xoffset*/, double yoffset);
     void on_char(uint32_t codepoint);
 
-    // Call each frame to update internal state
-    void begin_frame();
-    void end_frame();
+    // Call each frame
+    void consume();
 
     // Actions registration
 
@@ -82,17 +80,13 @@ public:
     void on_action_released(const std::string& name, ActionCallback cb);
 
     // Getters and setters
-
-    glm::dvec2 mouse_pos() const;
-    glm::dvec2 mouse_delta() const;
-    double scroll_delta() const;  // since last frame
-    void set_mouse_pos(glm::dvec2 pos);
-    void set_mouse_delta(glm::dvec2 delta);
+    const glm::dvec2& cursor_pos() const;
+    glm::dvec2 cursor_pos_delta();                   // consumes the delta
+    double scroll_delta() const;                     // since last frame
     float axis(const std::string& axis_name) const;  // -1..1
 
 private:
     // Keys
-    static constexpr size_t MAX_KEYS = 1024;
     std::bitset<MAX_KEYS> m_curr_keys;
     std::bitset<MAX_KEYS> m_prev_keys;
     int32_t m_curr_mods = 0;
@@ -101,12 +95,10 @@ private:
     std::bitset<32> m_curr_mouse_btns;
     std::bitset<32> m_prev_mouse_btns;
 
-    // Mouse position and scroll
-    glm::dvec2 m_mouse_pos{0.0};
-    glm::dvec2 m_prev_mouse_pos{0.0};
-    glm::dvec2 m_mouse_delta{0.0};
+    // Mouse cursor position and mouse scroll
+    glm::dvec2 m_cursor_pos{0.0};
+    glm::dvec2 m_cursor_pos_delta{0.0};
     double m_scroll_delta = 0.0;
-    double m_scroll_accum = 0.0;
 
     // Actions
     std::unordered_map<std::string, Action> m_actions;

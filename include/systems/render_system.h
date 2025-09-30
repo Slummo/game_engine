@@ -2,18 +2,23 @@
 
 #include "systems/isystem.h"
 
+class EntityManager;
+class AssetManager;
+class Camera;
+class DebugContext;
+class InputContext;
+
 #include <glm/glm.hpp>
 #include <unordered_map>
 #include <cstdint>
 
-class RenderSystem : public ISystem<RenderContext, CameraContext, InputContext> {
+class RenderSystem : public ISystem {
 public:
-    void init(EntityManager& em, RenderContext& rc, CameraContext& cc, InputContext& ic) override;
-    void update(EntityManager& em, RenderContext& rc, CameraContext& cc, InputContext& ic) override;
+    void init(Engine& engine) override;
+    void update(Engine& engine) override;
 
 private:
-    void render_scene(EntityManager& em, Camera& cam_c, RenderContext& rc);
-    void render_hitboxes(EntityManager& em, Camera& cam_c, RenderContext& rc);
-    void render_debug(EntityManager& em, Camera& cam_c, RenderContext& rc);
-    void render_gui(EntityManager& em, RenderContext& rc);
+    void render_scene(EntityManager& em, AssetManager& am, Camera& cam_c, DebugContext& rc);
+    void render_debug(EntityManager& em, AssetManager& am, Camera& cam_c, InputContext& ic, DebugContext& rc);
+    void render_gui();
 };

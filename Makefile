@@ -29,8 +29,10 @@ CPPFLAGS		:=	-I$(INCLUDE_DIR) \
 					-I$(DEPS_DIR) \
 					-I$(IMGUI_DIR) \
 					-I$(IMGUI_DIR)/backends \
-					-DIMGUI_IMPL_OPENGL_LOADER_GLAD \
 					$(shell pkg-config --cflags $(LIBS))
+
+# ImGui specific preprocessor flags
+IMGUI_CPPFLAGS	:= -DIMGUI_IMPL_OPENGL_LOADER_GLAD
 
 # Linker flags
 LDFLAGS			:= 							# -L...
@@ -92,7 +94,16 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@$(MKDIR) $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(PROFILE_FLAGS) -c $< -o $@
 
-# C++ dependencies
+# ImGui dependencies
+$(OBJ_DIR)/deps/imgui/%.o: $(DEPS_DIR)/imgui/%.cpp
+	@$(MKDIR) $(dir $@)
+	$(CXX) $(CPPFLAGS) $(IMGUI_CPPFLAGS) $(CXXFLAGS) $(PROFILE_FLAGS) -c $< -o $@
+
+$(OBJ_DIR)/deps/imgui/backends/%.o: $(DEPS_DIR)/imgui/backends/%.cpp
+	@$(MKDIR) $(dir $@)
+	$(CXX) $(CPPFLAGS) $(IMGUI_CPPFLAGS) $(CXXFLAGS) $(PROFILE_FLAGS) -c $< -o $@
+
+# Other C++ dependencies
 $(OBJ_DIR)/deps/%.o: $(DEPS_DIR)/%.cpp
 	@$(MKDIR) $(dir $@)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROFILE_FLAGS) -c $< -o $@
@@ -113,6 +124,14 @@ gdb: debug
 	@gdb --args $(TARGET) $(ARGS)
 
 clean:
-	rm -rf $(BUILD_DIR)
+# Remove directories recursively except deps
+	@find $(BUILD_DIR) -mindepth 1 -type d \
+		! -path "$(OBJ_DIR)" \
+		! -path "$(OBJ_DIR)/deps" \
+		! -path "$(OBJ_DIR)/deps/*" \
+		-exec rm -rf {} +
+
+	@find $(BUILD_DIR) -mindepth 1 -maxdepth 2 -type f \
+		-exec rm {} +
 
 .PHONY: all release debug run gdb clean

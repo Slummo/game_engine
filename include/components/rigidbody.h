@@ -18,7 +18,7 @@ struct RigidBody : public IComponent {
     glm::vec3 velocity{0.0f};
     glm::vec3 force_accum{0.0f};  // accumulated forces for this frame
 
-    // Material
+    // MaterialAsset
     float restitution = 0.0f;  // bounciness [0..1]
     float friction = 0.5f;
 

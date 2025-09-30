@@ -1,6 +1,6 @@
 #pragma once
 
-#include "assets/iasset.h"
+#include "assets/interfaces.h"
 
 #include <string>
 #include <glm/glm.hpp>
@@ -11,17 +11,10 @@
 
 class ShaderAsset : public IAsset {
 public:
-    static std::shared_ptr<ShaderAsset> create_fallback();
-
-    // This function assumes the provided path contains all the
-    // shader files in the form s.vert, s.frag etc
-    static std::optional<std::shared_ptr<ShaderAsset>> load_from_file(const std::string& path);
-    static const char* base_path() {
-        return "assets/shaders/";
-    }
-    const std::string& full_path();
+    ShaderAsset(std::string name);
 
     void use() const;
+    void get_active_uniforms();
     int32_t get_uniform_location(const std::string& name) const;
     void set_bool(const std::string& name, bool value) const;
     void set_int(const std::string& name, int32_t value) const;
@@ -35,14 +28,28 @@ public:
 
     ~ShaderAsset();
 
+    uint32_t program_id = 0;
+    std::unordered_map<std::string, int32_t> uniform_locations;
+
 protected:
     std::ostream& print(std::ostream& os) const override;
+};
 
-private:
-    uint32_t m_program_id;
-    std::string m_full_path;
-    std::unordered_map<std::string, int32_t> m_uniform_locations;
+template <>
+class AssetCreator<ShaderAsset> : public AssetCreatorNoDep<ShaderAsset> {
+public:
+    using Base = AssetCreatorNoDep<ShaderAsset>;
+    using Base::Base;
 
-    static bool check_compile_errors(uint32_t shader, const std::string& type);
-    void get_active_uniforms();
+    static std::shared_ptr<ShaderAsset> create_fallback(AssetManager& am);
+};
+
+template <>
+class AssetLoader<ShaderAsset> : public AssetLoaderNoDep<ShaderAsset> {
+public:
+    using Base = AssetLoaderNoDep<ShaderAsset>;
+    using Base::Base;
+
+    static const char* base_path();
+    AssetID finish() override;
 };

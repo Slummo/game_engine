@@ -3,6 +3,7 @@
 #include "contexts/icontext.h"
 #include "contexts/contexts.h"
 #include "core/types/type_name.h"
+#include "core/log.h"
 
 #include <unordered_map>
 #include <typeindex>
@@ -14,7 +15,7 @@ class ContextManager {
 public:
     template <typename T, typename... Args>
         requires std::is_base_of_v<IContext, T>
-    T& add_context(Args&&... args) {
+    T& add(Args&&... args) {
         std::type_index i(typeid(T));
         auto [it, added] = m_contexts.try_emplace(i, std::make_unique<T>(std::forward<Args>(args)...));
         if (added) {
@@ -26,7 +27,7 @@ public:
 
     template <typename T>
         requires std::is_base_of_v<IContext, T>
-    T& get_context() {
+    T& get() {
         std::type_index i(typeid(T));
         if (!m_contexts.contains(i)) {
             throw std::runtime_error(

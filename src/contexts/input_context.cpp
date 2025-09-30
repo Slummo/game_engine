@@ -1,4 +1,5 @@
 #include "contexts/input_context.h"
+#include "core/log.h"
 
 #include <algorithm>
 #include <iostream>
@@ -61,25 +62,22 @@ void InputContext::on_mouse_button(int32_t button, int32_t action, int32_t /*mod
 }
 
 void InputContext::on_cursor_pos(double xpos, double ypos) {
-    m_mouse_pos = glm::dvec2(xpos, ypos);
+    glm::dvec2 new_pos(xpos, ypos);
+    glm::dvec2 delta = new_pos - m_cursor_pos;
+
+    m_cursor_pos_delta += delta;
+    m_cursor_pos = new_pos;
 }
 
 void InputContext::on_scroll(double /*xoffset*/, double yoffset) {
-    m_scroll_accum += yoffset;
+    m_scroll_delta += yoffset;
 }
 
 void InputContext::on_char(uint32_t /*codepoint*/) {
     // TODO
 }
 
-void InputContext::begin_frame() {
-    // Mouse
-    m_mouse_delta = m_mouse_pos - m_prev_mouse_pos;
-    m_prev_mouse_pos = m_mouse_pos;
-    m_scroll_delta = m_scroll_accum;
-    m_scroll_accum = 0.0;
-
-    // Actions
+void InputContext::consume() {
     for (auto& [name, action] : m_actions) {
         // Evaluate bindings
         float axis_accum = 0.0f;
@@ -132,9 +130,6 @@ void InputContext::begin_frame() {
     // Advance previous state for edge detection
     m_prev_keys = m_curr_keys;
     m_prev_mouse_btns = m_curr_mouse_btns;
-}
-
-void InputContext::end_frame() {
 }
 
 void InputContext::register_action(const Action& a) {
@@ -229,24 +224,18 @@ void InputContext::on_action_released(const std::string& name, ActionCallback cb
     m_action_released_callbacks[name].push_back(std::move(cb));
 }
 
-glm::dvec2 InputContext::mouse_pos() const {
-    return m_mouse_pos;
+const glm::dvec2& InputContext::cursor_pos() const {
+    return m_cursor_pos;
 }
 
-glm::dvec2 InputContext::mouse_delta() const {
-    return m_mouse_delta;
+glm::dvec2 InputContext::cursor_pos_delta() {
+    glm::dvec2 delta = m_cursor_pos_delta;
+    m_cursor_pos_delta = glm::dvec2(0.0);
+    return delta;
 }
 
 double InputContext::scroll_delta() const {
     return m_scroll_delta;
-}
-
-void InputContext::set_mouse_pos(glm::dvec2 pos) {
-    m_mouse_pos = pos;
-}
-
-void InputContext::set_mouse_delta(glm::dvec2 delta) {
-    m_mouse_delta = delta;
 }
 
 float InputContext::axis(const std::string& axis_name) const {

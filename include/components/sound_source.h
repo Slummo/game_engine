@@ -1,7 +1,7 @@
 #pragma once
 
 #include "components/icomponent.h"
-#include "managers/asset_manager.h"
+#include "core/types/id.h"
 
 #include <string>
 #include <unordered_map>
@@ -29,15 +29,6 @@ public:
         alSourcePlay(m_source_id);
     }
 
-    // Convenience method to set the current sound and play it
-    void play_sound(const std::string& name) {
-        if (!set_sound(name)) {
-            return;
-        }
-
-        play();
-    }
-
     // Pauses the current sound (doesn't rewind the sound)
     void pause() {
         alSourcePause(m_source_id);
@@ -48,31 +39,27 @@ public:
         alSourceStop(m_source_id);
     }
 
-    ~SoundSource() {
-        alDeleteSources(1, &m_source_id);
+    bool has_sound(const std::string& name) {
+        auto it = m_sounds.find(name);
+        return it != m_sounds.end();
     }
 
-    bool set_sound(const std::string& name) {
-        auto it = m_sounds.find(name);
-        if (it == m_sounds.end()) {
-            return false;
-        }
+    AssetID get_sound_id(const std::string& name) {
+        return m_sounds.at(name);
+    }
 
-        if (name == m_current_sound_name) {
-            // Already the current sound
-            return true;
-        }
+    bool is_sound_current(const std::string& name) {
+        return m_current_sound_name == name;
+    }
 
+    void set_current_sound(const std::string& name, uint32_t buffer_id) {
         m_current_sound_name = std::string(name);
-
-        AssetID sound_id = it->second;
-        SoundAsset& sound = AssetManager::instance().get_asset<SoundAsset>(sound_id);
-
-        // Set the attached buffer
-        m_current_buffer_id = sound.buffer_id();
+        m_current_buffer_id = buffer_id;
         alSourcei(m_source_id, AL_BUFFER, m_current_buffer_id);
+    }
 
-        return true;
+    ~SoundSource() {
+        alDeleteSources(1, &m_source_id);
     }
 
     void set_owner_position(const glm::vec3& owner_position) {

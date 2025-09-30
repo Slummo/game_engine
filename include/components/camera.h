@@ -1,7 +1,6 @@
 #pragma once
 
 #include "components/icomponent.h"
-#include "core/log.h"
 
 #include <cstdint>
 #include <cmath>

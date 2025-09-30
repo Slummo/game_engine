@@ -2,19 +2,22 @@
 
 #include "systems/isystem.h"
 #include "systems/systems.h"
-#include "core/log.h"
 #include "core/types/type_name.h"
+#include "core/log.h"
 
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
 #include <stdexcept>
+#include <format>
+
+class Engine;
 
 class SystemManager {
 public:
     template <typename T, typename... Args>
-        requires std::is_base_of_v<ISystemBase, T>
-    void add_system(Args&&... args) {
+        requires std::is_base_of_v<ISystem, T>
+    void add(Args&&... args) {
         std::type_index i(typeid(T));
         auto [it, added] = m_systems.try_emplace(i, std::make_unique<T>(std::forward<Args>(args)...));
         if (added) {
@@ -23,8 +26,8 @@ public:
     }
 
     template <typename T>
-        requires std::is_base_of_v<ISystemBase, T>
-    T& get_system() {
+        requires std::is_base_of_v<ISystem, T>
+    T& get() {
         std::type_index i(typeid(T));
         if (!m_systems.contains(i)) {
             throw std::runtime_error(
@@ -34,26 +37,25 @@ public:
         return *static_cast<T*>(m_systems.at(i).get());
     }
 
-    void init_all(EntityManager& em, ContextManager& cm) {
+    void init_all(Engine& engine) {
         for (auto& [i, s] : m_systems) {
-            s->init(em, cm);
+            s->init(engine);
         }
     }
 
-    void update_all(EntityManager& em, ContextManager& cm) {
+    void update_all(Engine& engine) {
         for (auto& [i, s] : m_systems) {
-            s->update(em, cm);
+            s->update(engine);
         }
-        cm.get_context<EventContext>().dispatch();
     }
 
-    void shutdown_all(EntityManager& em, ContextManager& cm) {
+    void shutdown_all(Engine& engine) {
         for (auto& [i, s] : m_systems) {
-            s->shutdown(em, cm);
+            s->shutdown(engine);
         }
         m_systems.clear();
     }
 
 private:
-    std::unordered_map<std::type_index, std::unique_ptr<ISystemBase>> m_systems;
+    std::unordered_map<std::type_index, std::unique_ptr<ISystem>> m_systems;
 };

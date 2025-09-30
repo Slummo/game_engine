@@ -1,5 +1,5 @@
 #include "assets/shader_asset.h"
-#include "core/log.h"
+#include "managers/asset_manager.h"
 
 #include <fstream>
 #include <sstream>
@@ -9,97 +9,11 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <cstdint>
 
-std::shared_ptr<ShaderAsset> ShaderAsset::create_fallback() {
-    return std::make_shared<ShaderAsset>();
-}
-
-std::optional<std::shared_ptr<ShaderAsset>> ShaderAsset::load_from_file(const std::string& path) {
-    std::ifstream v_file, f_file;
-
-    // Ensure ifstream objects can throw exceptions:
-    v_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    f_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-    std::string v_code, f_code;
-    try {
-        // Open files
-        v_file.open(path + "s.vert");
-        f_file.open(path + "s.frag");
-
-        std::stringstream v_buf, f_buf;
-
-        // Read files content
-        v_buf << v_file.rdbuf();
-        f_buf << f_file.rdbuf();
-
-        // Close files
-        v_file.close();
-        f_file.close();
-
-        // Read buffers as strings
-        v_code = v_buf.str();
-        f_code = f_buf.str();
-
-    } catch (std::ifstream::failure& e) {
-        ERR("[ShaderAsset] Error while reading shader file: " << e.what());
-        return std::nullopt;
-    }
-
-    // Convert into a c-style string
-    const char* v_code_c = v_code.c_str();
-    const char* f_code_c = f_code.c_str();
-
-    uint32_t vertex, fragment;
-
-    // Vertex
-    vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &v_code_c, nullptr);
-    glCompileShader(vertex);
-    if (!ShaderAsset::check_compile_errors(vertex, "Vertex shader")) {
-        return std::nullopt;
-    }
-
-    // Fragment
-    fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &f_code_c, nullptr);
-    glCompileShader(fragment);
-    if (!ShaderAsset::check_compile_errors(fragment, "Fragment shader")) {
-        return std::nullopt;
-    }
-
-    // Create program and attach shaders
-    auto shader = std::make_shared<ShaderAsset>();
-    shader->m_program_id = glCreateProgram();
-    glAttachShader(shader->m_program_id, vertex);
-    glAttachShader(shader->m_program_id, fragment);
-    glLinkProgram(shader->m_program_id);
-    if (!ShaderAsset::check_compile_errors(shader->m_program_id, "Program")) {
-        shader->~ShaderAsset();
-        return std::nullopt;
-    }
-
-    shader->m_full_path = std::string(path);
-
-    glDeleteShader(vertex);
-    glDeleteShader(fragment);
-
-    // Cache uniform locations
-    shader->get_active_uniforms();
-
-    return shader;
-}
-
-const std::string& ShaderAsset::full_path() {
-    return m_full_path;
+ShaderAsset::ShaderAsset(std::string name) : IAsset(name.empty() ? "unnamed_shader" : std::move(name)) {
 }
 
 void ShaderAsset::use() const {
-    glUseProgram(m_program_id);
-}
-
-int32_t ShaderAsset::get_uniform_location(const std::string& name) const {
-    auto it = m_uniform_locations.find(name);
-    return it == m_uniform_locations.end() ? -1 : it->second;
+    glUseProgram(program_id);
 }
 
 void ShaderAsset::set_bool(const std::string& name, bool value) const {
@@ -163,31 +77,56 @@ void ShaderAsset::set_matrix_4f(const std::string& name, const glm::mat4& mat) c
 }
 
 ShaderAsset::~ShaderAsset() {
-    if (m_program_id) {
-        glDeleteProgram(m_program_id);
-        m_program_id = 0;
+    if (program_id) {
+        glDeleteProgram(program_id);
+        program_id = 0;
     }
 }
 
 std::ostream& ShaderAsset::print(std::ostream& os) const {
-    return os << "ShaderAsset(program_id: " << m_program_id << ", path: " << m_full_path << ")";
+    return os << "ShaderAsset(program_id: " << program_id << ")";
 }
 
-bool ShaderAsset::check_compile_errors(uint32_t shader, const std::string& type) {
+void ShaderAsset::get_active_uniforms() {
+    GLint count;
+    glGetProgramiv(program_id, GL_ACTIVE_UNIFORMS, &count);
+
+    for (int32_t i = 0; i < count; i++) {
+        char name[128];
+        GLsizei length;
+        GLint size;
+        GLenum type;
+        glGetActiveUniform(program_id, (GLuint)i, sizeof(name), &length, &size, &type, name);
+
+        GLint loc = glGetUniformLocation(program_id, name);
+        uniform_locations[name] = loc;
+    }
+}
+
+int32_t ShaderAsset::get_uniform_location(const std::string& name) const {
+    auto it = uniform_locations.find(name);
+    return it == uniform_locations.end() ? -1 : it->second;
+}
+
+std::shared_ptr<ShaderAsset> AssetCreator<ShaderAsset>::create_fallback(AssetManager& /*am*/) {
+    return std::make_shared<ShaderAsset>("fallback_shader");
+}
+
+bool check_compile_errors(uint32_t shader, const std::string& type) {
     int32_t success;
     char info_log[1024];
     if (type != "Program") {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(shader, 1024, nullptr, info_log);
-            ERR("[ShaderAsset] compilation error for " << type << ":\n\t" << info_log)
+            ERR("[AssetLoader<ShaderAsset>] compilation error for " << type << ":\n\t" << info_log)
             return false;
         }
     } else {
         glGetProgramiv(shader, GL_LINK_STATUS, &success);
         if (!success) {
             glGetProgramInfoLog(shader, 1024, nullptr, info_log);
-            ERR("[ShaderAsset] linking error for " << type << ":\n\t" << info_log);
+            ERR("[AssetLoader<ShaderAsset>] linking error for " << type << ":\n\t" << info_log);
             return false;
         }
     }
@@ -195,18 +134,87 @@ bool ShaderAsset::check_compile_errors(uint32_t shader, const std::string& type)
     return true;
 }
 
-void ShaderAsset::get_active_uniforms() {
-    GLint count;
-    glGetProgramiv(m_program_id, GL_ACTIVE_UNIFORMS, &count);
+const char* AssetLoader<ShaderAsset>::base_path() {
+    return "assets/shaders/";
+}
 
-    for (int32_t i = 0; i < count; i++) {
-        char name[128];
-        GLsizei length;
-        GLint size;
-        GLenum type;
-        glGetActiveUniform(m_program_id, (GLuint)i, sizeof(name), &length, &size, &type, name);
-
-        GLint loc = glGetUniformLocation(m_program_id, name);
-        m_uniform_locations[name] = loc;
+AssetID AssetLoader<ShaderAsset>::finish() {
+    AssetID id = am.is_loaded(absolute_path);
+    if (id != INVALID_ASSET) {
+        return id;
     }
+
+    std::ifstream v_file, f_file;
+
+    // Ensure ifstream objects can throw exceptions:
+    v_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    f_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+    std::string v_code, f_code;
+    try {
+        // Open files
+        v_file.open(absolute_path + "/s.vert");
+        f_file.open(absolute_path + "/s.frag");
+
+        std::stringstream v_buf, f_buf;
+
+        // Read files content
+        v_buf << v_file.rdbuf();
+        f_buf << f_file.rdbuf();
+
+        // Close files
+        v_file.close();
+        f_file.close();
+
+        // Read buffers as strings
+        v_code = v_buf.str();
+        f_code = f_buf.str();
+
+    } catch (std::ifstream::failure& e) {
+        ERR("[AssetLoader<ShaderAsset>] Error while reading shader file: " << e.what());
+        return INVALID_ASSET;
+    }
+
+    // Convert into a c-style string
+    const char* v_code_c = v_code.c_str();
+    const char* f_code_c = f_code.c_str();
+
+    uint32_t vertex, fragment;
+
+    // Vertex
+    vertex = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex, 1, &v_code_c, nullptr);
+    glCompileShader(vertex);
+    if (!check_compile_errors(vertex, "Vertex shader")) {
+        return INVALID_ASSET;
+    }
+
+    // Fragment
+    fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment, 1, &f_code_c, nullptr);
+    glCompileShader(fragment);
+    if (!check_compile_errors(fragment, "Fragment shader")) {
+        return INVALID_ASSET;
+    }
+
+    // Create program and attach shaders
+    auto shader = std::make_shared<ShaderAsset>(std::move(name));
+    shader->program_id = glCreateProgram();
+    glAttachShader(shader->program_id, vertex);
+    glAttachShader(shader->program_id, fragment);
+    glLinkProgram(shader->program_id);
+    if (!check_compile_errors(shader->program_id, "Program")) {
+        shader->~ShaderAsset();
+        return INVALID_ASSET;
+    }
+
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+
+    // Cache uniform locations
+    shader->get_active_uniforms();
+
+    id = am.add<ShaderAsset>(std::move(shader));
+    am.add_loaded(std::move(absolute_path), id);
+    return id;
 }

@@ -51,7 +51,7 @@ bool Application::init() {
     engine = std::make_unique<Engine>();
 
     // Create window
-    if (!window->create("Engine", 800, 600)) {
+    if (!window->create("Engine", 1920, 1080)) {
         ERR("[Application] Window creation failed!");
         return false;
     }
@@ -189,7 +189,7 @@ bool Application::init() {
     engine->cm().add<CollisionContext>();
     auto& ic = engine->cm().add<InputContext>();
     engine->cm().add<CameraContext>(main_camera);
-    engine->cm().add<RenderContext>();
+    engine->cm().add<RenderContext>(*window);
     engine->cm().add<DebugContext>(*engine, *window);
 
     // Add systems
@@ -210,7 +210,7 @@ bool Application::init() {
     ic.register_action("Quit", InputType::Key, GLFW_KEY_ESCAPE);
     ic.on_action_pressed("Quit", [&]() { window->close(); });
 
-    window->set_capture(true);
+    window->set_capture(false);
 
     return true;
 }

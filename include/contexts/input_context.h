@@ -1,13 +1,17 @@
 #pragma once
 
 #include "contexts/icontext.h"
-#include "core/window.h"
 
 #include <variant>
 #include <vector>
 #include <bitset>
 #include <unordered_map>
 #include <functional>
+#include <cstdint>
+
+#include <glm/glm.hpp>
+
+class Window;
 
 using Key = int32_t;
 using MouseButton = int32_t;

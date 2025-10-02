@@ -5,6 +5,7 @@
 class EntityManager;
 class AssetManager;
 class Camera;
+class RenderContext;
 class DebugContext;
 class InputContext;
 
@@ -18,7 +19,7 @@ public:
     void update(Engine& engine) override;
 
 private:
-    void render_scene(EntityManager& em, AssetManager& am, Camera& cam_c, DebugContext& rc);
-    void render_debug(EntityManager& em, AssetManager& am, Camera& cam_c, InputContext& ic, DebugContext& rc);
-    void render_gui();
+    void render_scene(EntityManager& em, AssetManager& am, Camera& cam_c, DebugContext& dc);
+    void render_debug(EntityManager& em, AssetManager& am, Camera& cam_c, DebugContext& dc);
+    void render_gui(EntityManager& em, RenderContext& rc, DebugContext& dc);
 };

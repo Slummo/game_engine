@@ -1,4 +1,5 @@
 #include "contexts/input_context.h"
+#include "core/window.h"
 #include "core/log.h"
 
 #include <algorithm>

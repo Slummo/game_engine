@@ -10,6 +10,7 @@
 #include "contexts/input_context.h"
 #include "contexts/debug_context.h"
 #include "core/engine.h"
+#include "core/window.h"
 #include "managers/context_manager.h"
 #include "managers/entity_manager.h"
 #include "managers/asset_manager.h"
@@ -25,11 +26,14 @@
 #include <imgui/backends/imgui_impl_opengl3.h>
 
 void RenderSystem::init(Engine& engine) {
+    auto& rc = engine.cm().get<RenderContext>();
     auto& ic = engine.cm().get<InputContext>();
     auto& dc = engine.cm().get<DebugContext>();
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
+
+    rc.create_scene_panel_fbo(400, 300);
 
     ic.register_action("ToggleWiremode", InputType::Key, GLFW_KEY_M, GLFW_MOD_CONTROL);
     ic.on_action_pressed("ToggleWiremode", [&]() { dc.wiremode = !dc.wiremode; });
@@ -38,26 +42,39 @@ void RenderSystem::init(Engine& engine) {
 }
 
 void RenderSystem::update(Engine& engine) {
+    auto& rc = engine.cm().get<RenderContext>();
     auto& cc = engine.cm().get<CameraContext>();
-    auto& ic = engine.cm().get<InputContext>();
     auto& dc = engine.cm().get<DebugContext>();
 
     EntityManager& em = engine.em();
     AssetManager& am = engine.am();
 
-    glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glPolygonMode(GL_FRONT_AND_BACK, dc.wiremode ? GL_LINE : GL_FILL);
-
     // Only get the main camera for now
     Camera& cam = cc.main_camera;
+
+    // Bind the scene panel fbo, set its viewport and clear
+    glBindFramebuffer(GL_FRAMEBUFFER, rc.scene_panel_fbo);
+    glViewport(0, 0, rc.scene_panel_w, rc.scene_panel_h);
+    glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glPolygonMode(GL_FRONT_AND_BACK, dc.wiremode ? GL_LINE : GL_FILL);
+
+    // Render scene and debug on the scene panel fbo
     render_scene(em, am, cam, dc);
-    render_debug(em, am, cam, ic, dc);
+    if (dc.active) {
+        render_debug(em, am, cam, dc);
+    }
+
+    // Do the same for the default fbo
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    auto win_size = rc.win.size();
+    glViewport(0, 0, win_size.x, win_size.y);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Don't use wiremode for gui
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    // render_gui();
+    render_gui(em, rc, dc);
 }
 
 void RenderSystem::render_scene(EntityManager& em, AssetManager& am, Camera& cam, DebugContext& dc) {
@@ -87,12 +104,7 @@ void RenderSystem::render_scene(EntityManager& em, AssetManager& am, Camera& cam
     }
 }
 
-void RenderSystem::render_debug(EntityManager& em, AssetManager& am, Camera& cam, InputContext& /*ic*/,
-                                DebugContext& dc) {
-    if (!dc.active) {
-        return;
-    }
-
+void RenderSystem::render_debug(EntityManager& em, AssetManager& am, Camera& cam, DebugContext& dc) {
     // Draw hitboxes
     ShaderAsset& line_shader = am.get<ShaderAsset>(dc.colored_line_shader_id);
     if (am.last_used_shader() != dc.colored_line_shader_id) {
@@ -142,19 +154,20 @@ void RenderSystem::render_debug(EntityManager& em, AssetManager& am, Camera& cam
     glDrawArrays(GL_LINES, 0, 2);
     glLineWidth(1.0f);
     glBindVertexArray(0);
+}
 
-    // Render debug GUI
+void RenderSystem::render_gui(EntityManager& em, RenderContext& rc, DebugContext& dc) {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
     // Draw FPS counter
-    ImVec2 pos(10, 10);
+    ImVec2 fps_pos(10, 10);
     ImU32 color = IM_COL32(255, 255, 255, 255);
     const char* fps_text = std::format("FPS: {}", dc.fps).c_str();
 
     ImDrawList* list = ImGui::GetForegroundDrawList();
-    list->AddText(pos, color, fps_text);
+    list->AddText(fps_pos, color, fps_text);
 
     ImGui::Begin("Transforms");
     ImGui::BeginChild("Scrolling");
@@ -171,10 +184,25 @@ void RenderSystem::render_debug(EntityManager& em, AssetManager& am, Camera& cam
     ImGui::EndChild();
     ImGui::End();
 
+    ImGui::Begin("Scene");
+
+    // Get the scene panel dimensions
+    ImVec2 avail = ImGui::GetContentRegionAvail();
+
+    // Rescale the scene panel fbo
+    rc.rescale_scene_panel_fbo((uint32_t)avail.x, (uint32_t)avail.y);
+
+    // Add the scene's fbo texture as an imgui image
+    ImGui::Image((void*)(intptr_t)rc.texture_id, ImVec2(avail.x, avail.y), ImVec2(0, 1), ImVec2(1, 0));
+
+    // bool clicked = ImGui::IsItemClicked();
+
+    // if (clicked) {
+    //     rc.win.set_capture(true);
+    // }
+
+    ImGui::End();
+
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void RenderSystem::render_gui() {
-    // TODO
 }

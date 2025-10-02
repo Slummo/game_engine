@@ -64,7 +64,7 @@ bool Window::create(const std::string& title, int32_t width, int32_t height) {
     glfwSetScrollCallback(m_handle, scroll_callback);
     glfwSetCharCallback(m_handle, char_callback);
 
-    // Set debug callbacks
+    // Set debug callback
     if (GLAD_GL_KHR_debug || GLAD_GL_VERSION_4_3) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -85,7 +85,13 @@ bool Window::create(const std::string& title, int32_t width, int32_t height) {
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
 
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
     ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 0.0f;
+    style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+
     ImGui_ImplGlfw_InitForOpenGL(m_handle, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 

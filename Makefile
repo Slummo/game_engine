@@ -118,10 +118,10 @@ $(OBJ_DIR)/deps/%.o: $(DEPS_DIR)/%.c
 
 # Convenience rules
 run: release
-	@$(TARGET)
+	$(TARGET)
 
 gdb: debug
-	@gdb --args $(TARGET) $(ARGS)
+	gdb --args $(TARGET) $(ARGS)
 
 clean:
 # Remove directories recursively except deps
